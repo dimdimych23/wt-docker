@@ -1,0 +1,314 @@
+services:
+  
+  nginx-proxy:
+    image: nginx:1.25-alpine
+    restart: always
+    ports:
+      - "80:80"
+      - "81:81"
+      - "443:443"
+    volumes:
+      - ./nginx-proxy/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./certs/wt.local:/etc/nginx/certs:ro
+    depends_on:
+      web-backend-1:
+        condition: service_started
+      web-backend-2:
+        condition: service_started
+      worker-backend:
+        condition: service_started
+      vclass-media:
+        condition: service_started
+    networks:
+      - wt-net
+  
+  postgres:
+    image: postgres:16
+    restart: always
+    environment:
+      POSTGRES_USER: wt
+      POSTGRES_PASSWORD: wt_password
+      POSTGRES_DB: wt
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wt"]
+      interval: 5s
+      timeout: 10s
+      retries: 10
+    networks:
+      - wt-net
+  
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: wt_pgadmin
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@local.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+      - ./pgadmin/servers.json:/pgadmin4/servers.json
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - wt-net
+  
+  redis:
+    image: redis:7.2-alpine
+    container_name: wt_redis
+    restart: always
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - wt-net
+  
+  loki:
+    image: grafana/loki:2.9.3
+    container_name: loki
+    user: root
+    command: -config.file=/etc/loki/config.yaml
+    volumes:
+      - ./monitoring/loki-config.yaml:/etc/loki/config.yaml
+      - loki-data:/loki
+    networks:
+      - wt-net
+  
+  promtail:
+    image: grafana/promtail:2.9.3
+    container_name: promtail
+    volumes:
+      - ./websoft/Logs:/var/log/websoft
+      - ./monitoring/promtail.yaml:/etc/promtail/config.yaml
+    command: -config.file=/etc/promtail/config.yaml
+    networks:
+      - wt-net
+  
+  grafana:
+    image: grafana/grafana:10.2.2
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+    networks:
+      - wt-net
+  
+  web-backend-1:
+    image: websoft/hcm:2025.2.1212
+    platform: linux/amd64
+    hostname: wt_dev
+    restart: always
+    tty: true
+    stdin_open: true
+    command: "/WebsoftServer/xhttp.out"
+    environment:
+      - NodesPoolId=1
+      - ExternalDeployment=true
+      - MEMORY_MIMALLOC=2
+      - RoleType=0
+    volumes:
+      - ./websoft/wt_data:/WebsoftServer/wt_data
+      - ./websoft/web:/WebsoftServer/wt/web/webtutor
+      - ./websoft/Logs/web-backend-1:/WebsoftServer/Logs
+      - ./websoft/ft-idx:/WebsoftServer/ft-idx
+      - ./websoft/applications:/WebsoftServer/applications
+      - ./websoft/configs/common/license.xfpx:/WebsoftServer/license.xfpx
+      - ./websoft/configs/common/resource_sec.json:/WebsoftServer/resource_sec.json
+      - ./websoft/configs/web-backend/xHttp.ini:/WebsoftServer/xHttp.ini
+      - ./websoft/configs/web-backend/spxml_unibridge_config.xml:/WebsoftServer/spxml_unibridge_config.xml
+      - ./websoft/configs/web-backend/xhttp_config.json:/WebsoftServer/xhttp_config.json
+      - ./websoft/platform.runtime:/WebsoftServer/platform.runtime
+      - ./websoft/components.runtime:/WebsoftServer/components.runtime
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >
+          wget -q --spider http://localhost:8011/spxml_web/main.htm || exit 1
+      interval: 10s
+      timeout: 5s
+      start_period: 90s
+      retries: 12
+    networks:
+      - wt-net
+  
+  web-backend-2:
+    image: websoft/hcm:2025.2.1212
+    platform: linux/amd64
+    hostname: wt_dev
+    restart: always
+    tty: true
+    stdin_open: true
+    command: "/WebsoftServer/xhttp.out"
+    environment:
+      - NodesPoolId=1
+      - ExternalDeployment=true
+      - MEMORY_MIMALLOC=2
+      - RoleType=0
+    volumes:
+      - ./websoft/wt_data:/WebsoftServer/wt_data
+      - ./websoft/web:/WebsoftServer/wt/web/webtutor
+      - ./websoft/Logs/web-backend-2:/WebsoftServer/Logs
+      - ./websoft/ft-idx:/WebsoftServer/ft-idx
+      - ./websoft/applications:/WebsoftServer/applications
+      - ./websoft/configs/common/license.xfpx:/WebsoftServer/license.xfpx
+      - ./websoft/configs/common/resource_sec.json:/WebsoftServer/resource_sec.json
+      - ./websoft/configs/web-backend/xHttp.ini:/WebsoftServer/xHttp.ini
+      - ./websoft/configs/web-backend/spxml_unibridge_config.xml:/WebsoftServer/spxml_unibridge_config.xml
+      - ./websoft/configs/web-backend/xhttp_config.json:/WebsoftServer/xhttp_config.json
+      - ./websoft/platform.runtime:/WebsoftServer/platform.runtime
+      - ./websoft/components.runtime:/WebsoftServer/components.runtime
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >
+          wget -q --spider http://localhost:8011/spxml_web/main.htm || exit 1
+      interval: 10s
+      timeout: 5s
+      start_period: 90s
+      retries: 12
+    networks:
+      - wt-net
+
+  vclass-media:
+    image: websoft/hcm:2025.2.1212
+    platform: linux/amd64
+    hostname: wt_dev
+    restart: always
+    ports:
+      - "20000-20009:20000-20009/udp" # для прода исправить на "20000-20999:20000-20999/udp"
+      - "20000-20009:20000-20009/tcp" # для прода исправить на "20000-20999:20000-20999/tcp"
+    tty: true
+    stdin_open: true
+    command: "/WebsoftServer/xhttp.out"
+    environment:
+      - NodesPoolId=1
+      - ExternalDeployment=true
+      - MEMORY_MIMALLOC=2
+      - RoleType=0
+    volumes:
+      - ./websoft/wt_data:/WebsoftServer/wt_data
+      - ./websoft/web:/WebsoftServer/wt/web/webtutor
+      - ./websoft/Logs/vclass-media:/WebsoftServer/Logs
+      - ./websoft/ft-idx:/WebsoftServer/ft-idx
+      - ./websoft/applications:/WebsoftServer/applications
+      - ./websoft/configs/common/license.xfpx:/WebsoftServer/license.xfpx
+      - ./websoft/configs/common/resource_sec.json:/WebsoftServer/resource_sec.json
+      - ./websoft/configs/vclass-media/xHttp.ini:/WebsoftServer/xHttp.ini
+      - ./websoft/configs/vclass-media/spxml_unibridge_config.xml:/WebsoftServer/spxml_unibridge_config.xml
+      - ./websoft/configs/vclass-media/xhttp_config.json:/WebsoftServer/xhttp_config.json
+      - ./websoft/configs/vclass-media/mediasoup_config.json:/WebsoftServer/mediasoup_config.json
+      - ./websoft/platform.runtime:/WebsoftServer/platform.runtime
+      - ./websoft/components.runtime:/WebsoftServer/components.runtime
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >
+          wget -q --spider http://localhost:8011/spxml_web/main.htm || exit 1
+      interval: 10s
+      timeout: 5s
+      start_period: 90s
+      retries: 12
+    networks:
+      - wt-net
+
+  vclass-recorder:
+    image: websoft/recorder:1.25.03.20
+    platform: linux/amd64
+    restart: always
+    tty: true
+    stdin_open: true
+    expose:
+      - "8443"
+    volumes:
+      - ./websoft/configs/vclass-recorder/config.json:/Websoft.Recording/config/config.json:ro
+      - ./websoft/configs/vclass-recorder/certs/recorder.pfx:/Websoft.Recording/certs/recorder.pfx:ro
+      - ./websoft/Logs/vclass-recorder:/Websoft.Recording/logs
+      - ./websoft/records:/Websoft.Recording/records
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - wt-net
+  
+  worker-backend:
+    image: websoft/hcm:2025.2.1212
+    platform: linux/amd64
+    hostname: wt_dev
+    restart: always
+    tty: true
+    stdin_open: true
+    command: "/WebsoftServer/xhttp.out"
+    environment:
+      - NodesPoolId=3
+      - ExternalDeployment=true
+      - MEMORY_MIMALLOC=2
+      - RoleType=1
+    volumes:
+      - ./websoft/wt_data:/WebsoftServer/wt_data
+      - ./websoft/web:/WebsoftServer/wt/web/webtutor
+      - ./websoft/Logs/worker-backend:/WebsoftServer/Logs
+      - ./websoft/ft-idx:/WebsoftServer/ft-idx
+      - ./websoft/applications:/WebsoftServer/applications
+      - ./websoft/configs/common/license.xfpx:/WebsoftServer/license.xfpx
+      - ./websoft/configs/common/resource_sec.json:/WebsoftServer/resource_sec.json
+      - ./websoft/configs/worker-backend/xHttp.ini:/WebsoftServer/xHttp.ini
+      - ./websoft/configs/worker-backend/spxml_unibridge_config.xml:/WebsoftServer/spxml_unibridge_config.xml
+      - ./websoft/configs/worker-backend/xhttp_config.json:/WebsoftServer/xhttp_config.json
+      - ./websoft/platform.runtime:/WebsoftServer/platform.runtime
+      - ./websoft/components.runtime:/WebsoftServer/components.runtime
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >
+          wget -q --spider http://localhost:8011/spxml_web/main.htm || exit 1
+      interval: 10s
+      timeout: 5s
+      start_period: 90s
+      retries: 12
+    networks:
+      - wt-net
+
+networks:
+  wt-net:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  pgadmin-data:
+  redis-data:
+  grafana-data:
+  loki-data:

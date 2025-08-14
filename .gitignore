@@ -1,0 +1,50 @@
+# Docker
+*.pid
+
+# System
+.vscode/
+.idea/
+.DS_Store
+
+# Build
+/distrib/*
+!/distrib/.gitkeep
+
+# certificates
+/certs/*
+!/certs/.gitkeep
+
+# websoft
+/websoft/applications/*
+!/websoft/applications/.gitkeep
+/websoft/ft-idx/*
+!/websoft/ft-idx/.gitkeep
+/websoft/records/*
+!/websoft/records/.gitkeep
+!/websoft/records/archive/
+/websoft/records/archive/*
+!/websoft/records/archive/.gitkeep
+/websoft/wt_data/*
+!/websoft/wt_data/.gitkeep
+/websoft/components.runtime/*
+!/websoft/components.runtime/.gitkeep
+/websoft/platform.runtime/*
+!/websoft/platform.runtime/.gitkeep
+/websoft/start-wt.sh/*
+!/websoft/start-wt.sh/.gitkeep
+/websoft/wt_data/*
+!/websoft/wt_data/.gitkeep
+
+# Logs
+/websoft/Logs/vclass-media/*
+!/websoft/Logs/vclass-media/.gitkeep
+/websoft/Logs/vclass-recorder/*
+!/websoft/Logs/vclass-recorder/.gitkeep
+/websoft/Logs/web-backend-1/*
+!/websoft/Logs/web-backend-1/.gitkeep
+/websoft/Logs/web-backend-2/*
+!/websoft/Logs/web-backend-2/.gitkeep
+/websoft/Logs/web-backend-init/*
+!/websoft/Logs/web-backend-init/.gitkeep
+/websoft/Logs/worker-backend/*
+!/websoft/Logs/worker-backend/.gitkeep

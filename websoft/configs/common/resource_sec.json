@@ -1,0 +1,36 @@
+{
+    "upload":
+    {
+        "maxFileSize": 536870912,
+        "white":
+        {
+            "types": ["application/pkix-cert","image/gif","image/jpeg","image/jpg","image/png","image/svg+xml","image/bmp","image/tiff","application/msword","application/vnd.openxmlformats-officedocument.wordprocessingml.document","application/vnd.oasis.opendocument.text","application/pdf","application/vnd.ms-powerpoint","application/vnd.openxmlformats-officedocument.presentationml.presentation","application/vnd.ms-pps","application/vnd.openxmlformats-officedocument.presentationml.slideshow","application/vnd.ms-excel","application/vnd.openxmlformats-officedocument.spreadsheetml.sheet","text/plain","application/rtf","text/csv","audio/mpeg","audio/x-ms-wma ","audio/m4a","audio/ogg","audio/wav","audio/aac","audio/x-flac","audio/3gpp2","audio/3gpp","video/x-msvideo","video/mpg","video/mp4","video/m4v","video/quicktime","video/ogg","video/x-ms-wmv","video/x-ms-asf","video/3gpp","video/3gpp2","video/mpeg","audio/webm","video/webm","application/zip","application/x-zip-compressed","text/xml","application/xml","application/pgp-signature"],
+            "fileNameRule": "^[^\\@\\#\\$]{1,255}\\.(cer|zip|gif|jpeg|jpg|png|svg|bmp|tiff|doc|docx|odt|pdf|ppt|pptx|pps|ppsx|xls|xlsx|txt|rtf|csv|mp3|wma|m4a|ogg|wav|aac|flac|avi|mpg|mp4|m4v|mov|ogv|wmv|3gp|3g2|mpeg|webm|weba|zip|xml|sig)$"
+        },
+        "black":
+        {
+            "types": null,
+            "fileNameRule": "\\.(exe|cmd|ps1|svg)$"
+        }
+    },
+	"xss": 
+	{
+		"patterns":
+		{
+			"richtext":
+			{
+				"disallowed_tags": ["script","iframe"],
+				"disallowed_attributes": ["on*"]
+			},
+			"formattedtext":
+			{
+				"allowed_tags": ["b","br","i","u","strike","font"],
+				"disallowed_attributes": ["style"]
+			}
+		}
+	},
+	"image_resize": 
+	{
+		"maxImageSize": 600
+	}
+}

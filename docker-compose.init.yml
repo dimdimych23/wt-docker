@@ -1,0 +1,82 @@
+services:
+  
+  postgres:
+    image: postgres:16
+    restart: always
+    environment:
+      POSTGRES_USER: wt
+      POSTGRES_PASSWORD: wt_password
+      POSTGRES_DB: wt
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wt"]
+      interval: 5s
+      timeout: 10s
+      retries: 10
+    networks:
+      - wt-net
+  
+  redis:
+    image: redis:7.2-alpine
+    container_name: wt_redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 10s
+      retries: 10
+    networks:
+      - wt-net
+  
+  web-backend-init:
+    image: websoft/hcm:2025.2.1212
+    platform: linux/amd64
+    hostname: wt_dev
+    restart: always
+    tty: true
+    stdin_open: true
+    command: "/WebsoftServer/xhttp.out"
+    environment:
+      - NodesPoolId=1
+      - ExternalDeployment=true
+      - MEMORY_MIMALLOC=2
+      - RoleType=0
+    ports:
+      - "81:8011"
+    volumes:
+      - ./websoft/wt_data:/WebsoftServer/wt_data
+      - ./websoft/web:/WebsoftServer/wt/web/webtutor
+      - ./websoft/Logs/web-backend-init:/WebsoftServer/Logs
+      - ./websoft/ft-idx:/WebsoftServer/ft-idx
+      - ./websoft/applications:/WebsoftServer/applications
+      - ./websoft/configs/web-backend-init/xHttp.ini:/WebsoftServer/xHttp.ini
+      - ./websoft/configs/web-backend-init/spxml_unibridge_config.xml:/WebsoftServer/spxml_unibridge_config.xml
+      - ./websoft/configs/common/license.xfpx:/WebsoftServer/license.xfpx
+      - ./websoft/configs/common/resource_sec.json:/WebsoftServer/resource_sec.json
+      - ./websoft/configs/web-backend-init/xhttp_config.json:/WebsoftServer/xhttp_config.json
+      - ./websoft/platform.runtime:/WebsoftServer/platform.runtime
+      - ./websoft/components.runtime:/WebsoftServer/components.runtime
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - wt-net
+  
+networks:
+  wt-net:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  redis-data:

@@ -1,0 +1,116 @@
+{
+  "MediasoupStartupSettings": {
+      "MediasoupVersion": "3.9.10",
+      "WorkerInProcess": false,
+      "WorkerPath": "",
+      "NumberOfWorkers": 1
+  },
+  "MediasoupSettings": {
+    "WorkerSettings": {
+      "LogLevel": "error", 
+      "LogTags": [
+        "info",
+        "ice",
+        "dtls",
+        "rtp",
+        "srtp",
+        "rtcp",
+        "rtx",
+        "bwe",
+        "score",
+        "simulcast",
+        "svc",
+        "sctp",
+        "message"
+      ],
+      "RtcMinPort": 20000,
+      "RtcMaxPort": 20009
+    },
+    "RouterSettings": {
+      "RtpCodecCapabilities": [
+        {
+          "Kind": "audio",
+          "MimeType": "audio/opus",
+          "ClockRate": 48000,
+          "Channels": 2
+        },
+        {
+          "Kind": "audio",
+          "MimeType": "audio/PCMA",
+          "ClockRate": 8000,
+          "Channels": 1
+        },
+        {
+          "Kind": "video",
+          "MimeType": "video/VP8",
+          "ClockRate": 90000,
+          "Parameters": {
+            "x-google-start-bitrate": 1000
+          }
+        },
+        {
+          "Kind": "video",
+          "MimeType": "video/VP9",
+          "ClockRate": 90000,
+          "Parameters": {
+            "profile-id": 2,
+            "x-google-start-bitrate": 1000
+          }
+        },
+        {
+          "Kind": "video",
+          "MimeType": "video/h264",
+          "ClockRate": 90000,
+          "Parameters": {
+            "packetization-mode": 1,
+            "profile-level-id": "4d0032",
+            "level-asymmetry-allowed": 1,
+            "x-google-start-bitrate": 1000
+          }
+        },
+        {
+          "Kind": "video",
+          "MimeType": "video/h264",
+          "ClockRate": 90000,
+          "Parameters": {
+            "packetization-mode": 1,
+            "profile-level-id": "42e01f",
+            "level-asymmetry-allowed": 1,
+            "x-google-start-bitrate": 1000
+          }
+        }
+      ]
+    },
+    "ServerNetworkLimits":
+    {
+      "MaximumIncomingBitRate": 10000000,
+      "MaximumOutgoingBitRate": 10000000,
+      "ThrottlingStrategy": "NoThrottling",
+      "MinimalIncomingBitRatePerTransport": 64000, 
+      "MinimalOutgoingBitRatePerTransport": 64000,
+      "MaximumIncomingBitRatePerTransport": 112000,
+      "MaximumOutgoingBitRatePerTransport": 112000,
+      "WebRtcTransportSettings": {
+        "ListenIps": [
+          {
+            "Ip": "0.0.0.0",
+            "AnnouncedIp": "0.0.0.0"
+          }
+        ]
+      },
+      "PlainTransportSettings": {
+        "ListenIp": {
+          "Ip": "0.0.0.0",
+          "AnnouncedIp": "0.0.0.0"
+        }
+      }
+    },
+    "MeetingServerSettings": {
+      "ServeMode": "Open"
+    }
+    ,
+    "AuthSettings": {
+      "AllowEmptyTickets": "false" 
+    }
+  }
+}

@@ -1,0 +1,63 @@
+{
+	"Kestrel": {
+		"EndPoints": {
+			"Http": {
+				"Url": "http://*:8011"
+			}
+		},
+		"Limits": {
+			"MaxConcurrentConnections": 800, 
+			"MaxConcurrentUpgradedConnections": 800, 
+			"MaxRequestBodySize": 536870912, 
+			"MaxRequestHeaderCount": 100 
+		}
+	},
+	"WorkerThreads": {
+		"MinWorkerThreads":"3000",
+		"MinIOCThreads":"1000",
+		"MaxWorkerThreads":"0",
+		"MaxIOCThreads":"0"
+	},
+	"AllowedHosts": [
+		"localhost",
+		"*"
+	],
+	"Authentication": [
+		{
+			"Host": "*",
+			"Scheme": "None",
+			"Exclusions": [
+				"/default",
+				"/lrs/*",
+				"/webtutor/*",
+				"/verify.html",
+				"/token_redirect_for_omnicode.html",
+				"/mobileservice/datafeed.xml*",
+				"/spxml_web/*"
+			],
+			"TicketStoreExpiration": "01:00:00",
+			"BearerTokenAllowed": true,
+			"LogoutPath": "/logout"
+		}
+	],
+	"ResponseHeadersRules":
+	[
+		{
+			"Host":"*",
+			"Remove": ["Server"]
+		}
+	],
+	"DefaultTicketCacheLifeTime" : 600,
+	"AspNetMappings":
+	[
+		{
+			"Enabled": true,
+			"Assembly": "Websoft.Mapping.HCM.dll",
+			"Type": "Websoft.Mapping.HCM",
+			"Properties":
+			{
+				"UserIdExpirationSec":60
+			}
+		}
+	]
+}

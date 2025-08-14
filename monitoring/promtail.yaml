@@ -1,0 +1,37 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+positions:
+  filename: /tmp/positions.yaml
+
+scrape_configs:
+  - job_name: websoft-hcm
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: websoft-hcm
+          role: web1
+          __path__: /var/log/websoft/web1/*.log
+      - targets:
+          - localhost
+        labels:
+          job: websoft-hcm
+          role: web2
+          __path__: /var/log/websoft/web2/*.log
+      - targets:
+          - localhost
+        labels:
+          job: websoft-hcm
+          role: worker
+          __path__: /var/log/websoft/worker/*.log
+      - targets:
+          - localhost
+        labels:
+          job: websoft-hcm
+          role: mediaserver
+          __path__: /var/log/websoft/mediaserver/*.log
