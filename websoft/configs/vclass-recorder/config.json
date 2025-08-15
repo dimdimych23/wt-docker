@@ -55,8 +55,8 @@
           "Password": "user1"		
         },
         "RecordingDir": "",				
-        "Host": "https://wt.local", 		
-        "Slots": 5,								
+        "Host": "https://wt.local",
+        "Slots": 5,
         "FfmpegConfig": {
           "StartDelay": "4000",
           "CommandOptions": "",

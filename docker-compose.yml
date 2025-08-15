@@ -126,7 +126,7 @@ services:
       - ./websoft/applications:/WebsoftServer/applications
       - ./websoft/configs/common/license.xfpx:/WebsoftServer/license.xfpx
       - ./websoft/configs/common/resource_sec.json:/WebsoftServer/resource_sec.json
-      - ./websoft/configs/web-backend/xHttp.ini:/WebsoftServer/xHttp.ini
+      - ./websoft/configs/common/xHttp.ini:/WebsoftServer/xHttp.ini
       - ./websoft/configs/web-backend/spxml_unibridge_config.xml:/WebsoftServer/spxml_unibridge_config.xml
       - ./websoft/configs/web-backend/xhttp_config.json:/WebsoftServer/xhttp_config.json
       - ./websoft/platform.runtime:/WebsoftServer/platform.runtime
@@ -169,7 +169,7 @@ services:
       - ./websoft/applications:/WebsoftServer/applications
       - ./websoft/configs/common/license.xfpx:/WebsoftServer/license.xfpx
       - ./websoft/configs/common/resource_sec.json:/WebsoftServer/resource_sec.json
-      - ./websoft/configs/web-backend/xHttp.ini:/WebsoftServer/xHttp.ini
+      - ./websoft/configs/common/xHttp.ini:/WebsoftServer/xHttp.ini
       - ./websoft/configs/web-backend/spxml_unibridge_config.xml:/WebsoftServer/spxml_unibridge_config.xml
       - ./websoft/configs/web-backend/xhttp_config.json:/WebsoftServer/xhttp_config.json
       - ./websoft/platform.runtime:/WebsoftServer/platform.runtime
@@ -201,7 +201,7 @@ services:
       - "20000-20009:20000-20009/tcp" # для прода исправить на "20000-20999:20000-20999/tcp"
     tty: true
     stdin_open: true
-    command: "/WebsoftServer/xhttp.out"
+    command: ["/bin/sh", "/entrypoint-vclass-media.sh"]
     environment:
       - NodesPoolId=1
       - ExternalDeployment=true
@@ -213,14 +213,15 @@ services:
       - ./websoft/Logs/vclass-media:/WebsoftServer/Logs
       - ./websoft/ft-idx:/WebsoftServer/ft-idx
       - ./websoft/applications:/WebsoftServer/applications
+      - ./websoft/platform.runtime:/WebsoftServer/platform.runtime
+      - ./websoft/components.runtime:/WebsoftServer/components.runtime
       - ./websoft/configs/common/license.xfpx:/WebsoftServer/license.xfpx
       - ./websoft/configs/common/resource_sec.json:/WebsoftServer/resource_sec.json
-      - ./websoft/configs/vclass-media/xHttp.ini:/WebsoftServer/xHttp.ini
+      - ./websoft/configs/common/xHttp.ini:/WebsoftServer/xHttp.ini
       - ./websoft/configs/vclass-media/spxml_unibridge_config.xml:/WebsoftServer/spxml_unibridge_config.xml
       - ./websoft/configs/vclass-media/xhttp_config.json:/WebsoftServer/xhttp_config.json
       - ./websoft/configs/vclass-media/mediasoup_config.json:/WebsoftServer/mediasoup_config.json
-      - ./websoft/platform.runtime:/WebsoftServer/platform.runtime
-      - ./websoft/components.runtime:/WebsoftServer/components.runtime
+      - ./websoft/configs/vclass-media/entrypoint-vclass-media.sh:/entrypoint-vclass-media.sh:ro
     depends_on:
       postgres:
         condition: service_healthy
@@ -245,7 +246,7 @@ services:
     tty: true
     stdin_open: true
     expose:
-      - "8443"
+      - "8300"
     volumes:
       - ./websoft/configs/vclass-recorder/config.json:/Websoft.Recording/config/config.json:ro
       - ./websoft/configs/vclass-recorder/certs/recorder.pfx:/Websoft.Recording/certs/recorder.pfx:ro
@@ -280,7 +281,7 @@ services:
       - ./websoft/applications:/WebsoftServer/applications
       - ./websoft/configs/common/license.xfpx:/WebsoftServer/license.xfpx
       - ./websoft/configs/common/resource_sec.json:/WebsoftServer/resource_sec.json
-      - ./websoft/configs/worker-backend/xHttp.ini:/WebsoftServer/xHttp.ini
+      - ./websoft/configs/common/xHttp.ini:/WebsoftServer/xHttp.ini
       - ./websoft/configs/worker-backend/spxml_unibridge_config.xml:/WebsoftServer/spxml_unibridge_config.xml
       - ./websoft/configs/worker-backend/xhttp_config.json:/WebsoftServer/xhttp_config.json
       - ./websoft/platform.runtime:/WebsoftServer/platform.runtime
@@ -301,7 +302,7 @@ services:
       retries: 12
     networks:
       - wt-net
-
+     
 networks:
   wt-net:
     driver: bridge

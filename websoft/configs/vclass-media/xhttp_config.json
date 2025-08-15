@@ -1,15 +1,15 @@
 {
 	"Kestrel": {
 		"EndPoints": {
-		"Http": {
-			"Url": "http://*:8011"
-		}
+			"Http": {
+				"Url": "http://*:8011"
+			}
 		},
 		"Limits": {
-		"MaxConcurrentConnections": 800,
-		"MaxConcurrentUpgradedConnections": 800,
-		"MaxRequestBodySize": 536870912,
-		"MaxRequestHeaderCount": 100
+			"MaxConcurrentConnections": 800,
+			"MaxConcurrentUpgradedConnections": 800,
+			"MaxRequestBodySize": 536870912,
+			"MaxRequestHeaderCount": 100
 		}
 	},
 	"WorkerThreads": {
@@ -22,7 +22,6 @@
 		"localhost",
 		"*"
 	],
-	"MediaSoupService": true,
 	"Authentication": [
 		{
 			"Host": "*",
@@ -43,19 +42,19 @@
 	],
 	"ResponseHeadersRules": [
 		{
-		"Host": "*",
-		"Remove": [ "Server" ]
+			"Host": "*",
+			"Remove": [ "Server" ]
 		}
 	],
 	"DefaultTicketCacheLifeTime": 600,
 	"AspNetMappings": [
 		{
-		"Enabled": true,
-		"Assembly": "Websoft.Mapping.HCM.dll",
-		"Type": "Websoft.Mapping.HCM",
-		"Properties": {
-			"UserIdExpirationSec": 60
-		}
+			"Enabled": true,
+			"Assembly": "Websoft.Mapping.HCM.dll",
+			"Type": "Websoft.Mapping.HCM",
+			"Properties": {
+				"UserIdExpirationSec": 60
+			}
 		}
 	]
 }

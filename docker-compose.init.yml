@@ -58,10 +58,10 @@ services:
       - ./websoft/Logs/web-backend-init:/WebsoftServer/Logs
       - ./websoft/ft-idx:/WebsoftServer/ft-idx
       - ./websoft/applications:/WebsoftServer/applications
-      - ./websoft/configs/web-backend-init/xHttp.ini:/WebsoftServer/xHttp.ini
-      - ./websoft/configs/web-backend-init/spxml_unibridge_config.xml:/WebsoftServer/spxml_unibridge_config.xml
+      - ./websoft/configs/common/xHttp.ini:/WebsoftServer/xHttp.ini
       - ./websoft/configs/common/license.xfpx:/WebsoftServer/license.xfpx
       - ./websoft/configs/common/resource_sec.json:/WebsoftServer/resource_sec.json
+      - ./websoft/configs/web-backend-init/spxml_unibridge_config.xml:/WebsoftServer/spxml_unibridge_config.xml
       - ./websoft/configs/web-backend-init/xhttp_config.json:/WebsoftServer/xhttp_config.json
       - ./websoft/platform.runtime:/WebsoftServer/platform.runtime
       - ./websoft/components.runtime:/WebsoftServer/components.runtime
