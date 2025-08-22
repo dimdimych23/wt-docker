@@ -247,3 +247,8 @@ ALTER TABLE dbo."(spxml_objects)" OWNER TO wt;
 
 CREATE INDEX IF NOT EXISTS ix_del_spxml_objects ON dbo."(spxml_objects)" USING btree (is_deleted);
 ALTER INDEX dbo.ix_del_spxml_objects OWNER TO wt;
+
+-- Первичная инициализация дат модификации для Lucene (идемпотентно)
+UPDATE dbo."(spxml_objects)"
+SET modified = CURRENT_DATE
+WHERE modified IS NULL;

@@ -32,6 +32,7 @@
     <add key="AsyncCatalogProcessing" value="false" />
     <add key="AutomaticSyncCatalog" value="false" />
     <add key="UpgradeLocked" value="false" />
+    <add key="InPlaceUpgrade" value="false" />
     <add key="Collation" value="" />
     <add key="LuceneFTIndex" value="true" />
 	  <add key="LuceneFTIndexBlobs" value="true" />

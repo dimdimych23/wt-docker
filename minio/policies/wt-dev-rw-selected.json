@@ -1,0 +1,40 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ListAllBuckets",
+      "Effect": "Allow",
+      "Action": [
+        "s3:ListBucket"
+      ],
+      "Resource": [
+        "arn:aws:s3:::dev-wt-webtutor",
+        "arn:aws:s3:::dev-wt-spxml-blobs",
+        "arn:aws:s3:::dev-wt-applications",
+        "arn:aws:s3:::dev-wt-ft-idx",
+        "arn:aws:s3:::dev-wt-records",
+        "arn:aws:s3:::dev-wt-logs"
+      ]
+    },
+    {
+      "Sid": "FullRWOnAllBuckets",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:DeleteObject",
+        "s3:AbortMultipartUpload",
+        "s3:ListMultipartUploadParts",
+        "s3:ListMultipartUpload"
+      ],
+      "Resource": [
+        "arn:aws:s3:::dev-wt-webtutor/*",
+        "arn:aws:s3:::dev-wt-spxml-blobs/*",
+        "arn:aws:s3:::dev-wt-applications/*",
+        "arn:aws:s3:::dev-wt-ft-idx/*",
+        "arn:aws:s3:::dev-wt-records/*",
+        "arn:aws:s3:::dev-wt-logs/*"
+      ]
+    }
+  ]
+}

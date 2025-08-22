@@ -31,12 +31,13 @@
     <add key="LinkedCatalogsSchemaDeletions" value="true" />
     <add key="AsyncCatalogProcessing" value="false" />
     <add key="AutomaticSyncCatalog" value="false" />
-    <add key="UpgradeLocked" value="true" />
+    <add key="UpgradeLocked" value="false" />
+    <add key="InPlaceUpgrade" value="false" />
     <add key="Collation" value="" />
     <add key="LuceneFTIndex" value="true" />
 	  <add key="LuceneFTIndexBlobs" value="true" />
     <add key="LuceneFTAnalyzerSpecialChars" value="./-_\~':;,?#@!$%^&amp;*()+=|[]{}&gt;&lt;&quot;" />
-	  <add key="MaxFTDocs" value="5000" />
+	  <add key="MaxFTDocs" value="1000" />
     <add key="SharedFTDirectory" value="/WebsoftServer/ft-idx/" />
     <add key="CacheDebug" value="false" />
     <add key="ProviderDebugLog" value="false" />

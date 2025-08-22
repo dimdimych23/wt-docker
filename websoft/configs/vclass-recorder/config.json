@@ -52,7 +52,7 @@
       {
         "Credentials": {
           "Username": "user1",					
-          "Password": "user1"		
+          "Password": "user1"
         },
         "RecordingDir": "",				
         "Host": "https://wt.local",

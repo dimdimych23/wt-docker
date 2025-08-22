@@ -28,8 +28,8 @@ VFS_DELETE_LOCAL_AFTER_FETCH="${VFS_DELETE_LOCAL_AFTER_FETCH:-false}"
 
 S3_TRUSTED_CA_PATH="${S3_TRUSTED_CA_PATH:-/WebsoftServer/certs/minio/minio-rootCA.pem}"
 
-TPL="/WebsoftServer/configs/vfs_conf.json.template"
-OUT="/WebsoftServer/vfs_conf.json"
+TPL="/WebsoftServer/configs/vfs_config.json.template"
+OUT="/WebsoftServer/vfs_config.json"
 
 # -------- доверие CA (если файл есть) --------
 if [ -f "$S3_TRUSTED_CA_PATH" ] && command -v update-ca-certificates >/dev/null 2>&1; then

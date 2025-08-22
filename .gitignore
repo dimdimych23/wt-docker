@@ -30,8 +30,6 @@
 !/websoft/components.runtime/.gitkeep
 /websoft/platform.runtime/*
 !/websoft/platform.runtime/.gitkeep
-/websoft/start-wt.sh/*
-!/websoft/start-wt.sh/.gitkeep
 /websoft/wt_data/*
 !/websoft/wt_data/.gitkeep
 
