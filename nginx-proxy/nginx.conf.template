@@ -57,20 +57,6 @@ http {
         location /  { return 301 https://$host$request_uri; }
     }
 
-    server {
-        listen 80;
-        listen [::]:80;
-        server_name ${PUBLIC_FQDN__VCLASS_MEDIA};
-        location /  { return 301 https://$host$request_uri; }
-    }
-
-    server {
-        listen 80;
-        listen [::]:80;
-        server_name ${PUBLIC_FQDN__VCLASS_RECORDER};
-        location /  { return 301 https://$host$request_uri; }
-    }
-
     # ================== локальный HTTP к worker =================
     server {
         listen ${NGINX_WT_PORT_HTTP__WORKER};
@@ -122,9 +108,5 @@ http {
 
         location = /favicon.ico { return 204; }
     }
-
-    # --- vclass-* сайты (если фича подключена файлом, см. include выше) ---
-    # сами блоки — внутри /etc/nginx/conf.d/features/vclass.conf
-
 }
 # ========================= END TEMPLATE ======================================

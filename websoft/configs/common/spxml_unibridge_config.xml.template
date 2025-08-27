@@ -37,9 +37,16 @@
     <!-- Распределённый кэш -->
     <add key="DistributedCache" value="true" />
     <add key="DistributedCacheType" value="spxml_redis_cache" />
-    <add key="DistributedCacheConfig" value="${HOST_NAME__REDIS}:${HOST_PORT__REDIS}, password=${PASSWORD__REDIS}, ${OPTS__REDIS}" />
+    <add key="DistributedCacheConfig" value="${HOST_NAME__REDIS}:${HOST_PORT__REDIS}, ${OPTS__REDIS}" />
+
+    <add key="AgentManager" value="false" />
+    <add key="InProcessMasterAgentManager" value="true" />
+    <add key="MasterAgentManager" value="true" />
+    <add key="AgentManagerMaxWorkers" value="1" />
 
     <!-- Общие флаги -->
+    <add key="CacheDebug" value="false" />
+    <add key="ProviderDebugLog" value="false" />
     <add key="PreventNonIndexOrder" value="false" />
     <add key="SqlInjection" value="true" />
     <add key="ProviderInfo" value="false" />
@@ -47,8 +54,8 @@
     <add key="MaxActiveRequests" value="30" />
     <add key="EventTimeout" value="-1" />
     <add key="PassAfterEventTimeout" value="true" />
-    <add key="LocalObjectCache" value="false" />
-    <add key="LocalFileCache" value="false" />
+    <add key="LocalObjectCache" value="${SPXML_CONF_LOCAL_OBJECT_CACHE}" />
+    <add key="LocalFileCache" value="${SPXML_CONF_LOCAL_FILE_CACHE}" />
     <add key="XQueryTemplateCache" value="true" />
     <add key="LinkedCatalogsSchemaDeletions" value="true" />
     <add key="AsyncCatalogProcessing" value="false" />
@@ -60,6 +67,8 @@
     <add key="InnerJoin" value="true" />
     <add key="LocalObjectCacheTime" value="30" />
     <add key="LocalObjectClientCache" value="false" />
+    <add key="LuceneFTCache" value="${SPXML_CONF_LUCENE_FT_CACHE}" /> 
+    <add key="LuceneFTIndexRAMBufferSize" value="${SPXML_CONF_LUCENE_FT_INDEX_RAM_BUFFER_SIZE}" />
 
     <!-- Кластеризация -->
     <add key="Cluster" value="true" />

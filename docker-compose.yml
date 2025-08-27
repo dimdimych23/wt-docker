@@ -1,15 +1,76 @@
+# -----------------------------
+# СЕТИ И ТОМA
+# -----------------------------
+networks:
+  wt-net:
+    name: ${NETWORK_NAME:-wt-net}
+    driver: bridge
+
+volumes:
+  redis-data:
+  # локальная инфраструктура (поднимается только при включённом profile)
+  postgres-data:
+
+# -----------------------------
+# СЕРВИСЫ 
+# -----------------------------
 services:
-  
+
+  # === EDGE / REVERSE PROXY ===
   nginx-proxy:
-    image: nginx:1.25-alpine
+    image: ${NGINX_IMAGE}
     restart: always
     ports:
       - "80:80"
-      - "81:81"
+      - "${NGINX_WT_PORT_HTTP__WORKER:-81}:${NGINX_WT_PORT_HTTP__WORKER:-81}"
       - "443:443"
+    environment:
+      # DNS резолвер для FQDN (Dev в Docker: 127.0.0.11; Prod можно задать свой)
+      NGINX_RESOLVER: ${NGINX_RESOLVER}
+
+      # домены
+      PUBLIC_FQDN__WEB: ${PUBLIC_FQDN__WEB}
+
+      # сертификаты (в этом варианте используем WT‑сертификат для всех трёх серверов)
+      NGINX_CERT_WT_CRT: ${NGINX_CERT_WT_CRT}
+      NGINX_CERT_WT_KEY: ${NGINX_CERT_WT_KEY}
+
+      # поведение прокси
+      NGINX_ENABLE_GZIP: ${NGINX_ENABLE_GZIP}
+      NGINX_PROXY_READ_TIMEOUT: ${NGINX_PROXY_READ_TIMEOUT}
+      NGINX_PROXY_SEND_TIMEOUT: ${NGINX_PROXY_SEND_TIMEOUT}
+      NGINX_PROXY_CONNECT_TIMEOUT: ${NGINX_PROXY_CONNECT_TIMEOUT}
+      NGINX_PROXY_BUFFERING: ${NGINX_PROXY_BUFFERING}
+
+      # upstream web (стратегия/keepalive/пассивные HC)
+      NGINX_UPSTREAM_STRATEGY__WEB: ${NGINX_UPSTREAM_STRATEGY__WEB}
+      NGINX_UPSTREAM_KEEPALIVE__WEB: ${NGINX_UPSTREAM_KEEPALIVE__WEB}
+      NGINX_UPSTREAM_KEEPALIVE__WORKER: ${NGINX_UPSTREAM_KEEPALIVE__WORKER}
+      NGINX_UPSTREAM_KEEPALIVE__VCLASS: ${NGINX_UPSTREAM_KEEPALIVE__VCLASS}
+      NGINX_UPSTREAM_KEEPALIVE__RECORDER: ${NGINX_UPSTREAM_KEEPALIVE__RECORDER}
+      NGINX_UPSTREAM_MAX_FAILS: ${NGINX_UPSTREAM_MAX_FAILS}
+      NGINX_UPSTREAM_FAIL_TIMEOUT: ${NGINX_UPSTREAM_FAIL_TIMEOUT}
+
+      # HSTS
+      NGINX_HSTS_MAX_AGE: ${NGINX_HSTS_MAX_AGE}
+
+      # worker http‑порт/ограничение
+      NGINX_WT_PORT_HTTP__WORKER: ${NGINX_WT_PORT_HTTP__WORKER}
+
+      # цели upstream'ов
+      UPSTREAM_HOST_NAME__WEB_1: ${UPSTREAM_HOST_NAME__WEB_1}
+      UPSTREAM_HOST_PORT__WEB_1: ${UPSTREAM_HOST_PORT__WEB_1}
+      UPSTREAM_HOST_NAME__WEB_2: ${UPSTREAM_HOST_NAME__WEB_2}
+      UPSTREAM_HOST_PORT__WEB_2: ${UPSTREAM_HOST_PORT__WEB_2}
+      UPSTREAM_HOST_NAME__WORKER: ${UPSTREAM_HOST_NAME__WORKER}
+      UPSTREAM_HOST_PORT__WORKER: ${UPSTREAM_HOST_PORT__WORKER}
     volumes:
-      - ./nginx-proxy/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./certs/wt:/etc/nginx/certs:ro
+      # шаблоны
+      - ./nginx-proxy/nginx.conf.template:/etc/nginx/nginx.conf.template:ro
+      # скрипт рендеринга — попадёт в /docker-entrypoint.d/ и выполнится автоматически
+      - ./nginx-proxy/init-nginx.sh:/docker-entrypoint.d/50-init-nginx.sh:ro
+      # сертификаты
+      - ${WT_CERTS_DIR}:/etc/nginx/certs:ro
     depends_on:
       web-backend-1:
         condition: service_started
@@ -17,390 +78,268 @@ services:
         condition: service_started
       worker-backend:
         condition: service_started
-      vclass-media:
-        condition: service_started
-    networks:
-      - wt-net
+    networks: [wt-net]
+
+  # === REDIS (кэш/очереди WT) ===
+  redis:
+    image: ${REDIS_IMAGE}
+    restart: always
+    environment:
+      REDIS_PASSWORD: ${PASSWORD__REDIS}
+    volumes:
+      - redis-data:/data
+      # - ./redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
+    # command: ["redis-server","/usr/local/etc/redis/redis.conf"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: ${HC_INTERVAL__REDIS:-5s}
+      timeout: ${HC_TIMEOUT__REDIS:-3s}
+      retries: ${HC_RETRIES__REDIS:-5}
+    networks: [wt-net]
+
+  # === WEB НОДА №1 ===
+  web-backend-1:
+    image: ${WT_IMAGE}
+    hostname: wt_dev
+    platform: linux/amd64
+    restart: always
+    command: ["/bin/sh","-lc","/WebsoftServer/wait-pg.sh && /WebsoftServer/init-spxml.sh && exec /WebsoftServer/xhttp.out"]
+    environment:
+      NodesPoolId: "1"
+      ExternalDeployment: "true"
+      MEMORY_MIMALLOC: "2"
+      RoleType: "0"
+      # PG WAIT
+      PG_WAIT_ENABLED: ${PG_WAIT_ENABLED}
+      PG_WAIT_DEADLINE: ${PG_WAIT_DEADLINE}
+      PG_WAIT_INTERVAL: ${PG_WAIT_INTERVAL}
+      PG_WAIT_ON_TIMEOUT: ${PG_WAIT_ON_TIMEOUT}
+      # ====== SPXML (WEB) — роли/кластер/кэш/ComplexHosting ======
+      SPXML_CONF_SESSION_EXPIRATION:              ${SPXML_CONF_SESSION_EXPIRATION__WEB}
+      SPXML_CONF_MAX_SESSIONS_COUNT:              ${SPXML_CONF_MAX_SESSIONS_COUNT__WEB}
+      SPXML_CONF_MAX_FT_DOCS:                     ${SPXML_CONF_MAX_FT_DOCS__WEB}
+      SPXML_CONF_UPGRADE_LOCKED:                  ${SPXML_CONF_UPGRADE_LOCKED__WEB}
+      SPXML_CONF_IN_PLACE_UPGRADE:                ${SPXML_CONF_IN_PLACE_UPGRADE__WEB}
+      SPXML_CONF_REDIS_LIMIT_MEMORY_PERCENTAGE:   ${SPXML_CONF_REDIS_LIMIT_MEMORY_PERCENTAGE__WEB}
+      SPXML_CONF_REDIS_LIMIT_MEMORY_MEGABYTES:    ${SPXML_CONF_REDIS_LIMIT_MEMORY_MEGABYTES__WEB}
+      SPXML_CONF_LOCAL_OBJECT_CACHE:              ${SPXML_CONF_LOCAL_OBJECT_CACHE__WEB}
+      SPXML_CONF_LOCAL_FILE_CACHE:                ${SPXML_CONF_LOCAL_FILE_CACHE__WEB}
+      SPXML_CONF_LUCENE_FT_CACHE:                 ${SPXML_CONF_LUCENE_FT_CACHE__WEB}
+      SPXML_CONF_LUCENE_FT_INDEX_RAM_BUFFER_SIZE: ${SPXML_CONF_LUCENE_FT_INDEX_RAM_BUFFER_SIZE__WEB}
+
+      SPXML_CONF_STRICT_WEBROLE:                  ${SPXML_CONF_STRICT_WEBROLE__WEB}
+      SPXML_CONF_STRICT_WORKERROLE:               ${SPXML_CONF_STRICT_WORKERROLE__WEB}
+      SPXML_CONF_STRICT_ROLE_TYPES:               ${SPXML_CONF_STRICT_ROLE_TYPES__WEB}
+      SPXML_CONF_REDIS_MAXMEMORY_ITEM_BYTES:      ${SPXML_CONF_REDIS_MAXMEMORY_ITEM_BYTES}
+
+      SPXML_CONF_COMPLEX_HOSTING_BLOCK:           ${SPXML_CONF_COMPLEX_HOSTING_BLOCK__WEB}
+
+      # ====== Подстановки для шаблона SPXML: БД и Redis (нужны и на WEB) ======
+      HOST_NAME__PG:                              ${HOST_NAME__PG}
+      HOST_PORT__PG:                              ${HOST_PORT__PG}
+      DB_NAME__PG:                                ${DB_NAME__PG}
+      DB_USER__PG:                                ${DB_USER__PG}
+      DB_PASSWORD__PG:                            ${DB_PASSWORD__PG}
+
+      HOST_NAME__REDIS:                           ${HOST_NAME__REDIS}
+      HOST_PORT__REDIS:                           ${HOST_PORT__REDIS}
+      PASSWORD__REDIS:                            ${PASSWORD__REDIS}
+      OPTS__REDIS:                                ${OPTS__REDIS}
+    volumes:
+      # Конфиги WebSoft
+      - ./websoft/configs/common/license.xfpx:/WebsoftServer/license.xfpx:ro
+      - ./websoft/configs/common/resource_sec.json:/WebsoftServer/resource_sec.json
+      - ./websoft/configs/common/xHttp.ini:/WebsoftServer/xHttp.ini
+      - ./websoft/configs/web-backend/xhttp_config.json:/WebsoftServer/xhttp_config.json
+      # шаблоны и скрипты инициализации конфигов
+      - ./websoft/configs/common/spxml_unibridge_config.xml.template:/WebsoftServer/configs/spxml_unibridge_config.xml.template:ro
+      - ./websoft/configs/common/init-spxml.sh:/WebsoftServer/init-spxml.sh:ro
+      - ./websoft/configs/common/wait-pg.sh:/WebsoftServer/wait-pg.sh:ro
+      # Рантайм каталоги
+      - ./websoft/wt_data:/WebsoftServer/wt_data
+      - ./websoft/runtimes/web-backend/platform:/WebsoftServer/platform.runtime
+      - ./websoft/runtimes/web-backend/components:/WebsoftServer/components.runtime
+      # Логи 
+      - ./websoft/Logs/web-backend-1:/WebsoftServer/Logs
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL","wget -q --spider http://localhost:8011/spxml_web/main.htm || exit 1"]
+      interval: ${HC_INTERVAL__WEB:-10s}
+      timeout: ${HC_TIMEOUT__WEB:-5s}
+      start_period: ${HC_START_PERIOD__WEB:-90s}
+      retries: ${HC_RETRIES__WEB:-12}
+    networks: [wt-net]
+
+  # === WEB НОДА №2 ===
+  web-backend-2:
+    image: ${WT_IMAGE}
+    hostname: wt_dev
+    platform: linux/amd64
+    restart: always
+    command: ["/bin/sh","-lc","/WebsoftServer/wait-pg.sh && /WebsoftServer/init-spxml.sh && exec /WebsoftServer/xhttp.out"]
+    environment:
+      NodesPoolId: "1"
+      ExternalDeployment: "true"
+      MEMORY_MIMALLOC: "2"
+      RoleType: "0"
+      # PG WAIT
+      PG_WAIT_ENABLED: ${PG_WAIT_ENABLED}
+      PG_WAIT_DEADLINE: ${PG_WAIT_DEADLINE}
+      PG_WAIT_INTERVAL: ${PG_WAIT_INTERVAL}
+      PG_WAIT_ON_TIMEOUT: ${PG_WAIT_ON_TIMEOUT}
+      # ====== SPXML (WEB) — роли/кластер/кэш/ComplexHosting ======
+      SPXML_CONF_SESSION_EXPIRATION:              ${SPXML_CONF_SESSION_EXPIRATION__WEB}
+      SPXML_CONF_MAX_SESSIONS_COUNT:              ${SPXML_CONF_MAX_SESSIONS_COUNT__WEB}
+      SPXML_CONF_MAX_FT_DOCS:                     ${SPXML_CONF_MAX_FT_DOCS__WEB}
+      SPXML_CONF_UPGRADE_LOCKED:                  ${SPXML_CONF_UPGRADE_LOCKED__WEB}
+      SPXML_CONF_IN_PLACE_UPGRADE:                ${SPXML_CONF_IN_PLACE_UPGRADE__WEB}
+      SPXML_CONF_REDIS_LIMIT_MEMORY_PERCENTAGE:   ${SPXML_CONF_REDIS_LIMIT_MEMORY_PERCENTAGE__WEB}
+      SPXML_CONF_REDIS_LIMIT_MEMORY_MEGABYTES:    ${SPXML_CONF_REDIS_LIMIT_MEMORY_MEGABYTES__WEB}
+      SPXML_CONF_LOCAL_OBJECT_CACHE:              ${SPXML_CONF_LOCAL_OBJECT_CACHE__WEB}
+      SPXML_CONF_LOCAL_FILE_CACHE:                ${SPXML_CONF_LOCAL_FILE_CACHE__WEB}
+      SPXML_CONF_LUCENE_FT_CACHE:                 ${SPXML_CONF_LUCENE_FT_CACHE__WEB}
+      SPXML_CONF_LUCENE_FT_INDEX_RAM_BUFFER_SIZE: ${SPXML_CONF_LUCENE_FT_INDEX_RAM_BUFFER_SIZE__WEB}
+
+      SPXML_CONF_STRICT_WEBROLE:                  ${SPXML_CONF_STRICT_WEBROLE__WEB}
+      SPXML_CONF_STRICT_WORKERROLE:               ${SPXML_CONF_STRICT_WORKERROLE__WEB}
+      SPXML_CONF_STRICT_ROLE_TYPES:               ${SPXML_CONF_STRICT_ROLE_TYPES__WEB}
+      SPXML_CONF_REDIS_MAXMEMORY_ITEM_BYTES:      ${SPXML_CONF_REDIS_MAXMEMORY_ITEM_BYTES}
+
+      SPXML_CONF_COMPLEX_HOSTING_BLOCK:           ${SPXML_CONF_COMPLEX_HOSTING_BLOCK__WEB}
+
+      # ====== Подстановки для шаблона SPXML: БД и Redis (нужны и на WEB) ======
+      HOST_NAME__PG:                              ${HOST_NAME__PG}
+      HOST_PORT__PG:                              ${HOST_PORT__PG}
+      DB_NAME__PG:                                ${DB_NAME__PG}
+      DB_USER__PG:                                ${DB_USER__PG}
+      DB_PASSWORD__PG:                            ${DB_PASSWORD__PG}
+
+      HOST_NAME__REDIS:                           ${HOST_NAME__REDIS}
+      HOST_PORT__REDIS:                           ${HOST_PORT__REDIS}
+      PASSWORD__REDIS:                            ${PASSWORD__REDIS}
+      OPTS__REDIS:                                ${OPTS__REDIS}
+    volumes:
+      # Конфиги WebSoft
+      - ./websoft/configs/common/license.xfpx:/WebsoftServer/license.xfpx:ro
+      - ./websoft/configs/common/resource_sec.json:/WebsoftServer/resource_sec.json
+      - ./websoft/configs/common/xHttp.ini:/WebsoftServer/xHttp.ini
+      - ./websoft/configs/web-backend/xhttp_config.json:/WebsoftServer/xhttp_config.json
+      # шаблоны и скрипты инициализации конфигов
+      - ./websoft/configs/common/spxml_unibridge_config.xml.template:/WebsoftServer/configs/spxml_unibridge_config.xml.template:ro
+      - ./websoft/configs/common/init-spxml.sh:/WebsoftServer/init-spxml.sh:ro
+      - ./websoft/configs/common/wait-pg.sh:/WebsoftServer/wait-pg.sh:ro
+      # Рантайм каталоги
+      - ./websoft/wt_data:/WebsoftServer/wt_data
+      - ./websoft/runtimes/web-backend/platform:/WebsoftServer/platform.runtime
+      - ./websoft/runtimes/web-backend/components:/WebsoftServer/components.runtime
+      # Логи 
+      - ./websoft/Logs/web-backend-2:/WebsoftServer/Logs
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL","wget -q --spider http://localhost:8011/spxml_web/main.htm || exit 1"]
+      interval: ${HC_INTERVAL__WEB:-10s}
+      timeout: ${HC_TIMEOUT__WEB:-5s}
+      start_period: ${HC_START_PERIOD__WEB:-90s}
+      retries: ${HC_RETRIES__WEB:-12}
+    networks: [wt-net]
   
+  # === WORKER НОДА ===
+  worker-backend:
+    image: ${WT_IMAGE}
+    hostname: wt_dev
+    platform: linux/amd64
+    restart: always
+    command: ["/bin/sh","-lc","/WebsoftServer/wait-pg.sh && /WebsoftServer/init-spxml.sh && exec /WebsoftServer/xhttp.out"]
+    environment:
+      NodesPoolId: "3"
+      ExternalDeployment: "true"
+      MEMORY_MIMALLOC: "2"
+      RoleType: "1"
+      # PG WAIT
+      PG_WAIT_ENABLED: ${PG_WAIT_ENABLED}
+      PG_WAIT_DEADLINE: ${PG_WAIT_DEADLINE}
+      PG_WAIT_INTERVAL: ${PG_WAIT_INTERVAL}
+      PG_WAIT_ON_TIMEOUT: ${PG_WAIT_ON_TIMEOUT}
+      # ====== SPXML (WORKER) — роли/кластер/кэш/ComplexHosting ======
+      SPXML_CONF_SESSION_EXPIRATION:              ${SPXML_CONF_SESSION_EXPIRATION__WORKER}
+      SPXML_CONF_MAX_SESSIONS_COUNT:              ${SPXML_CONF_MAX_SESSIONS_COUNT__WORKER}
+      SPXML_CONF_MAX_FT_DOCS:                     ${SPXML_CONF_MAX_FT_DOCS__WORKER}
+      SPXML_CONF_UPGRADE_LOCKED:                  ${SPXML_CONF_UPGRADE_LOCKED__WORKER}
+      SPXML_CONF_IN_PLACE_UPGRADE:                ${SPXML_CONF_IN_PLACE_UPGRADE__WORKER}
+      SPXML_CONF_REDIS_LIMIT_MEMORY_PERCENTAGE:   ${SPXML_CONF_REDIS_LIMIT_MEMORY_PERCENTAGE__WORKER}
+      SPXML_CONF_REDIS_LIMIT_MEMORY_MEGABYTES:    ${SPXML_CONF_REDIS_LIMIT_MEMORY_MEGABYTES__WORKER}
+      SPXML_CONF_LOCAL_OBJECT_CACHE:              ${SPXML_CONF_LOCAL_OBJECT_CACHE__WORKER}
+      SPXML_CONF_LOCAL_FILE_CACHE:                ${SPXML_CONF_LOCAL_FILE_CACHE__WORKER}
+      SPXML_CONF_LUCENE_FT_CACHE:                 ${SPXML_CONF_LUCENE_FT_CACHE__WORKER}
+      SPXML_CONF_LUCENE_FT_INDEX_RAM_BUFFER_SIZE: ${SPXML_CONF_LUCENE_FT_INDEX_RAM_BUFFER_SIZE__WORKER}
+
+      SPXML_CONF_STRICT_WEBROLE:                  ${SPXML_CONF_STRICT_WEBROLE__WORKER}
+      SPXML_CONF_STRICT_WORKERROLE:               ${SPXML_CONF_STRICT_WORKERROLE__WORKER}
+      SPXML_CONF_STRICT_ROLE_TYPES:               ${SPXML_CONF_STRICT_ROLE_TYPES__WORKER}
+      SPXML_CONF_REDIS_MAXMEMORY_ITEM_BYTES:      ${SPXML_CONF_REDIS_MAXMEMORY_ITEM_BYTES}
+
+      SPXML_CONF_COMPLEX_HOSTING_BLOCK:           ${SPXML_CONF_COMPLEX_HOSTING_BLOCK__WORKER}
+
+      # ====== Подстановки для шаблона SPXML: БД и Redis (нужны и на WEB) ======
+      HOST_NAME__PG:                              ${HOST_NAME__PG}
+      HOST_PORT__PG:                              ${HOST_PORT__PG}
+      DB_NAME__PG:                                ${DB_NAME__PG}
+      DB_USER__PG:                                ${DB_USER__PG}
+      DB_PASSWORD__PG:                            ${DB_PASSWORD__PG}
+
+      HOST_NAME__REDIS:                           ${HOST_NAME__REDIS}
+      HOST_PORT__REDIS:                           ${HOST_PORT__REDIS}
+      PASSWORD__REDIS:                            ${PASSWORD__REDIS}
+      OPTS__REDIS:                                ${OPTS__REDIS}
+    volumes:
+      # Конфиги WebSoft
+      - ./websoft/configs/common/license.xfpx:/WebsoftServer/license.xfpx:ro
+      - ./websoft/configs/common/resource_sec.json:/WebsoftServer/resource_sec.json
+      - ./websoft/configs/common/xHttp.ini:/WebsoftServer/xHttp.ini
+      - ./websoft/configs/worker-backend/xhttp_config.json:/WebsoftServer/xhttp_config.json
+      # шаблоны и скрипты инициализации конфигов
+      - ./websoft/configs/common/spxml_unibridge_config.xml.template:/WebsoftServer/configs/spxml_unibridge_config.xml.template:ro
+      - ./websoft/configs/common/init-spxml.sh:/WebsoftServer/init-spxml.sh:ro
+      - ./websoft/configs/common/wait-pg.sh:/WebsoftServer/wait-pg.sh:ro
+      # Рантайм каталоги
+      - ./websoft/wt_data:/WebsoftServer/wt_data
+      - ./websoft/runtimes/worker-backend/platform:/WebsoftServer/platform.runtime
+      - ./websoft/runtimes/worker-backend/components:/WebsoftServer/components.runtime
+      # Логи 
+      - ./websoft/Logs/worker-backend:/WebsoftServer/Logs
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL","wget -q --spider http://localhost:8011/spxml_web/main.htm || exit 1"]
+      interval: ${HC_INTERVAL__WORKER:-10s}
+      timeout: ${HC_TIMEOUT__WORKER:-5s}
+      start_period: ${HC_START_PERIOD__WORKER:-90s}
+      retries: ${HC_RETRIES__WORKER:-12}
+    networks: [wt-net]
+
+  # ====================================================
+  # ОПЦИОНАЛЬНАЯ ЛОКАЛЬНАЯ ИНФРА (для Dev) ЧЕРЕЗ PROFILE
+  # ====================================================
+
   postgres:
+    profiles: ["local-postgres"]
     image: postgres:16
     restart: always
     environment:
-      POSTGRES_USER: wt
-      POSTGRES_PASSWORD: wt_password
-      POSTGRES_DB: wt
+      POSTGRES_USER: ${DB_USER__PG}
+      POSTGRES_PASSWORD: ${DB_PASSWORD__PG}
+      POSTGRES_DB: ${DB_NAME__PG}
     volumes:
       - postgres-data:/var/lib/postgresql/data
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U wt"]
-      interval: 5s
-      timeout: 10s
-      retries: 10
-    networks:
-      - wt-net
-  
-  pgadmin:
-    image: dpage/pgadmin4
-    restart: always
-    environment:
-      PGADMIN_DEFAULT_EMAIL: admin@local.com
-      PGADMIN_DEFAULT_PASSWORD: admin
-    ports:
-      - "5050:80"
-    volumes:
-      - pgadmin-data:/var/lib/pgadmin
-      - ./pgadmin/servers.json:/pgadmin4/servers.json
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    networks:
-      - wt-net
-  
-  redis:
-    image: redis:7.2-alpine
-    restart: always
-    volumes:
-      - redis-data:/data
-    command: redis-server --appendonly yes
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
-    networks:
-      - wt-net
-
-  minio:
-    image: minio/minio@sha256:d249d1fb6966de4d8ad26c04754b545205ff15a62e4fd19ebd0f26fa5baacbc0
-    restart: unless-stopped
-    command: server /data --console-address ":9001"
-    environment:
-      ROOT_USER__MINIO: ${ROOT_USER__MINIO}
-      ROOT_PASSWORD__MINIO: ${ROOT_PASSWORD__MINIO}
-    volumes:
-      - minio-data:/data
-      - ./minio/certs:/root/.minio/certs:ro
-    ports:
-      - "9000:9000"   # S3 API
-      - "9001:9001"   # Web UI (Console)
-    networks:
-      - wt-net
-
-  # --- сервис: читает из MinIO (S3) и шлёт в Loki ---
-  logstash:
-    build:
-      context: ./monitoring/logstash
-    restart: always
-    environment:
-      LS_JAVA_OPTS: "-Xms256m -Xmx512m"
-      S3_SERVICE_URL: ${S3_SERVICE_URL}
-      S3_ACCESS_KEY_ID: ${S3_LOGS_RO_ACCESS_KEY_ID}
-      S3_SECRET_ACCESS_KEY: ${S3_LOGS_RO_SECRET_ACCESS_KEY}
-      BUCKET_LOGS: ${BUCKET_LOGS}
-      LOKI_SERVICE_URL: ${LOKI_SERVICE_URL}
-      LOKI_JOB_LABEL: ${LOKI_JOB_LABEL}
-      ROLE_FALLBACK: ${ROLE_FALLBACK}
-      ENV_FALLBACK: ${ENV_FALLBACK}
-      LOG_TYPE_FALLBACK: ${LOG_TYPE_FALLBACK}
-    volumes:
-      - ./monitoring/logstash/config/logstash.yml:/usr/share/logstash/config/logstash.yml:ro
-      - ./monitoring/logstash/pipeline:/usr/share/logstash/pipeline:ro
-      - logstash-data:/usr/share/logstash/data     # ПЕРСИСТЕНТНЫЕ очереди/DLQ/sincedb
-    depends_on:
-      minio: { condition: service_started }
-      loki:  { condition: service_started }
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER__PG} -d ${DB_NAME__PG} -h localhost"]
+      interval: ${HC_INTERVAL__PG:-5s}
+      timeout: ${HC_TIMEOUT__PG:-10s}
+      retries: ${HC_RETRIES__PG:-10}
     networks: [wt-net]
-        
-  loki:
-    image: grafana/loki:2.9.3
-    user: root
-    command: -config.file=/etc/loki/config.yaml
-    volumes:
-      - ./monitoring/loki/loki-config.yaml:/etc/loki/config.yaml
-      - loki-data:/loki
-    networks:
-      - wt-net
-  
-  grafana:
-    image: grafana/grafana:10.2.2
-    ports:
-      - "3000:3000"
-    volumes:
-      - grafana-data:/var/lib/grafana
-      - ./monitoring/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
-      - ./monitoring/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
-    environment:
-      GF_SECURITY_ADMIN_USER: admin
-      GF_SECURITY_ADMIN_PASSWORD: change_me
-      GF_USERS_ALLOW_SIGN_UP: "false"
-    networks:
-      - wt-net
-
-  web-backend-1:
-    image: websoft/hcm:2025.2.1212
-    platform: linux/amd64
-    hostname: wt_dev
-    restart: always
-    tty: true
-    stdin_open: true
-    command: ["/bin/sh","-lc","/WebsoftServer/init-vfs.sh"]
-    environment:
-      - NodesPoolId=1
-      - ExternalDeployment=true
-      - MEMORY_MIMALLOC=2
-      - RoleType=0
-      - S3_SERVICE_URL=${S3_SERVICE_URL}
-      - S3_ACCESS_KEY_ID=${S3_ACCESS_KEY_ID}
-      - S3_SECRET_ACCESS_KEY=${S3_SECRET_ACCESS_KEY}
-      - S3_FORCE_PATH_STYLE=${S3_FORCE_PATH_STYLE}
-      - S3_TIMEOUT=${S3_TIMEOUT}
-      - S3_TRUSTED_CA_PATH=${S3_TRUSTED_CA_PATH}
-      - BUCKET_WEBTUTOR=${BUCKET_WEBTUTOR}
-      - BUCKET_SPXML_BLOBS=${BUCKET_SPXML_BLOBS}
-      - BUCKET_APPLICATIONS=${BUCKET_APPLICATIONS}
-      - BUCKET_FTIDX=${BUCKET_FTIDX}
-      - BUCKET_LOGS=${BUCKET_LOGS}
-      - BUCKET_LOCATION_LOG=${BUCKET_LOCATION_LOG__WEB_1}
-    volumes:
-      # конфигурационные файлы Websoft HCM
-      - ./websoft/configs/common/license.xfpx:/WebsoftServer/license.xfpx # лицензия
-      - ./websoft/configs/common/resource_sec.json:/WebsoftServer/resource_sec.json
-      - ./websoft/configs/common/xHttp.ini:/WebsoftServer/xHttp.ini 
-      - ./websoft/configs/web-backend/spxml_unibridge_config.xml:/WebsoftServer/spxml_unibridge_config.xml
-      - ./websoft/configs/web-backend/xhttp_config.json:/WebsoftServer/xhttp_config.json
-      # конфигурация и сертификат для VFS
-      - ./websoft/configs/common/vfs_config.json.template:/WebsoftServer/configs/vfs_config.json.template:ro # шаблон VFS-конфигурации
-      - ./websoft/configs/common/init-vfs.sh:/WebsoftServer/init-vfs.sh:ro  # скрипт инициализации VFS
-      - ./websoft/certs/minio/minio-rootCA.pem:/WebsoftServer/certs/minio/minio-rootCA.pem:ro  # если нужен сертификат MinIO
-      # рабочие директории Websoft HCM
-      - ./websoft/platform.runtime:/WebsoftServer/platform.runtime  
-      - ./websoft/components.runtime:/WebsoftServer/components.runtime
-      - ./websoft/wt_data:/WebsoftServer/wt_data
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    healthcheck:
-      test:
-        - CMD-SHELL
-        - >
-          wget -q --spider http://localhost:8011/spxml_web/main.htm || exit 1
-      interval: 10s
-      timeout: 5s
-      start_period: 90s
-      retries: 12
-    networks:
-      - wt-net
-  
-  web-backend-2:
-    image: websoft/hcm:2025.2.1212
-    platform: linux/amd64
-    hostname: wt_dev
-    restart: always
-    tty: true
-    stdin_open: true
-    command: ["/bin/sh","-lc","/WebsoftServer/init-vfs.sh"]
-    environment:
-      - NodesPoolId=1
-      - ExternalDeployment=true
-      - MEMORY_MIMALLOC=2
-      - RoleType=0
-      - S3_SERVICE_URL=${S3_SERVICE_URL}
-      - S3_ACCESS_KEY_ID=${S3_ACCESS_KEY_ID}
-      - S3_SECRET_ACCESS_KEY=${S3_SECRET_ACCESS_KEY}
-      - S3_FORCE_PATH_STYLE=${S3_FORCE_PATH_STYLE}
-      - S3_TIMEOUT=${S3_TIMEOUT}
-      - S3_TRUSTED_CA_PATH=${S3_TRUSTED_CA_PATH}
-      - BUCKET_WEBTUTOR=${BUCKET_WEBTUTOR}
-      - BUCKET_SPXML_BLOBS=${BUCKET_SPXML_BLOBS}
-      - BUCKET_APPLICATIONS=${BUCKET_APPLICATIONS}
-      - BUCKET_FTIDX=${BUCKET_FTIDX}
-      - BUCKET_LOGS=${BUCKET_LOGS}
-      - BUCKET_LOCATION_LOG=${BUCKET_LOCATION_LOG__WEB_2}
-    volumes:
-      # конфигурационные файлы Websoft HCM
-      - ./websoft/configs/common/license.xfpx:/WebsoftServer/license.xfpx # лицензия
-      - ./websoft/configs/common/resource_sec.json:/WebsoftServer/resource_sec.json
-      - ./websoft/configs/common/xHttp.ini:/WebsoftServer/xHttp.ini 
-      - ./websoft/configs/web-backend/spxml_unibridge_config.xml:/WebsoftServer/spxml_unibridge_config.xml
-      - ./websoft/configs/web-backend/xhttp_config.json:/WebsoftServer/xhttp_config.json
-      # конфигурация и сертификат для VFS
-      - ./websoft/configs/common/vfs_config.json.template:/WebsoftServer/configs/vfs_config.json.template:ro # шаблон VFS-конфигурации
-      - ./websoft/configs/common/init-vfs.sh:/WebsoftServer/init-vfs.sh:ro  # скрипт инициализации VFS
-      - ./websoft/certs/minio/minio-rootCA.pem:/WebsoftServer/certs/minio/minio-rootCA.pem:ro  # если нужен сертификат MinIO
-      # рабочие директории Websoft HCM
-      - ./websoft/platform.runtime:/WebsoftServer/platform.runtime  
-      - ./websoft/components.runtime:/WebsoftServer/components.runtime
-      - ./websoft/wt_data:/WebsoftServer/wt_data
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    healthcheck:
-      test:
-        - CMD-SHELL
-        - >
-          wget -q --spider http://localhost:8011/spxml_web/main.htm || exit 1
-      interval: 10s
-      timeout: 5s
-      start_period: 90s
-      retries: 12
-    networks:
-      - wt-net
-
-  vclass-media:
-    image: websoft/hcm:2025.2.1212
-    platform: linux/amd64
-    hostname: wt_dev
-    restart: always
-    ports:
-      - "20000-20009:20000-20009/udp" # для прода исправить на "20000-20999:20000-20999/udp"
-      - "20000-20009:20000-20009/tcp" # для прода исправить на "20000-20999:20000-20999/tcp"
-    tty: true
-    stdin_open: true
-    command: ["/bin/sh", "/entrypoint-vclass-media.sh"]
-    environment:
-      - NodesPoolId=1
-      - ExternalDeployment=true
-      - MEMORY_MIMALLOC=2
-      - RoleType=0
-      - S3_SERVICE_URL=${S3_SERVICE_URL}
-      - S3_ACCESS_KEY_ID=${S3_ACCESS_KEY_ID}
-      - S3_SECRET_ACCESS_KEY=${S3_SECRET_ACCESS_KEY}
-      - S3_FORCE_PATH_STYLE=${S3_FORCE_PATH_STYLE}
-      - S3_TIMEOUT=${S3_TIMEOUT}
-      - S3_TRUSTED_CA_PATH=${S3_TRUSTED_CA_PATH}
-      - BUCKET_WEBTUTOR=${BUCKET_WEBTUTOR}
-      - BUCKET_SPXML_BLOBS=${BUCKET_SPXML_BLOBS}
-      - BUCKET_APPLICATIONS=${BUCKET_APPLICATIONS}
-      - BUCKET_FTIDX=${BUCKET_FTIDX}
-      - BUCKET_LOGS=${BUCKET_LOGS}
-      - BUCKET_LOCATION_LOG=${BUCKET_LOCATION_LOG__VCLASS_MEDIA}
-    volumes:
-      # конфигурационные файлы Websoft HCM
-      - ./websoft/configs/common/license.xfpx:/WebsoftServer/license.xfpx # лицензия
-      - ./websoft/configs/common/resource_sec.json:/WebsoftServer/resource_sec.json
-      - ./websoft/configs/common/xHttp.ini:/WebsoftServer/xHttp.ini 
-      - ./websoft/configs/vclass-media/spxml_unibridge_config.xml:/WebsoftServer/spxml_unibridge_config.xml
-      - ./websoft/configs/vclass-media/xhttp_config.json:/WebsoftServer/xhttp_config.json
-      - ./websoft/configs/vclass-media/mediasoup_config.json:/WebsoftServer/mediasoup_config.json
-      - ./websoft/configs/vclass-media/entrypoint-vclass-media.sh:/entrypoint-vclass-media.sh:ro
-      # конфигурация и сертификат для VFS
-      - ./websoft/configs/common/vfs_config.json.template:/WebsoftServer/configs/vfs_config.json.template:ro # шаблон VFS-конфигурации
-      - ./websoft/configs/common/init-vfs.sh:/WebsoftServer/init-vfs.sh:ro  # скрипт инициализации VFS
-      - ./websoft/certs/minio/minio-rootCA.pem:/WebsoftServer/certs/minio/minio-rootCA.pem:ro  # если нужен сертификат MinIO
-      # рабочие директории Websoft HCM
-      - ./websoft/platform.runtime:/WebsoftServer/platform.runtime  
-      - ./websoft/components.runtime:/WebsoftServer/components.runtime
-      - ./websoft/wt_data:/WebsoftServer/wt_data
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    healthcheck:
-      test:
-        - CMD-SHELL
-        - >
-          wget -q --spider http://localhost:8011/spxml_web/main.htm || exit 1
-      interval: 10s
-      timeout: 5s
-      start_period: 90s
-      retries: 12
-    networks:
-      - wt-net
-
-  vclass-recorder:
-    image: websoft/recorder:1.25.03.20
-    platform: linux/amd64
-    restart: always
-    tty: true
-    stdin_open: true
-    expose:
-      - "8300"
-    volumes:
-      - ./websoft/configs/vclass-recorder/config.json:/Websoft.Recording/config/config.json:ro
-      - ./websoft/configs/vclass-recorder/certs/recorder.pfx:/Websoft.Recording/certs/recorder.pfx:ro
-      - ./websoft/Logs/vclass-recorder:/Websoft.Recording/logs
-      - ./websoft/records:/Websoft.Recording/records
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    networks:
-      - wt-net
-  
-  worker-backend:
-    image: websoft/hcm:2025.2.1212
-    platform: linux/amd64
-    hostname: wt_dev
-    restart: always
-    tty: true
-    stdin_open: true
-    command: ["/bin/sh","-lc","/WebsoftServer/init-vfs.sh"]
-    environment:
-      - NodesPoolId=3
-      - ExternalDeployment=true
-      - MEMORY_MIMALLOC=2
-      - RoleType=1
-      - S3_SERVICE_URL=${S3_SERVICE_URL}
-      - S3_ACCESS_KEY_ID=${S3_ACCESS_KEY_ID}
-      - S3_SECRET_ACCESS_KEY=${S3_SECRET_ACCESS_KEY}
-      - S3_FORCE_PATH_STYLE=${S3_FORCE_PATH_STYLE}
-      - S3_TIMEOUT=${S3_TIMEOUT}
-      - S3_TRUSTED_CA_PATH=${S3_TRUSTED_CA_PATH}
-      - BUCKET_WEBTUTOR=${BUCKET_WEBTUTOR}
-      - BUCKET_SPXML_BLOBS=${BUCKET_SPXML_BLOBS}
-      - BUCKET_APPLICATIONS=${BUCKET_APPLICATIONS}
-      - BUCKET_FTIDX=${BUCKET_FTIDX}
-      - BUCKET_LOGS=${BUCKET_LOGS}
-      - BUCKET_LOCATION_LOG=${BUCKET_LOCATION_LOG__WORKER}
-    volumes:
-      # конфигурационные файлы Websoft HCM
-      - ./websoft/configs/common/license.xfpx:/WebsoftServer/license.xfpx # лицензия
-      - ./websoft/configs/common/resource_sec.json:/WebsoftServer/resource_sec.json
-      - ./websoft/configs/common/xHttp.ini:/WebsoftServer/xHttp.ini 
-      - ./websoft/configs/worker-backend/spxml_unibridge_config.xml:/WebsoftServer/spxml_unibridge_config.xml
-      - ./websoft/configs/worker-backend/xhttp_config.json:/WebsoftServer/xhttp_config.json
-      # конфигурация и сертификат для VFS
-      - ./websoft/configs/common/vfs_config.json.template:/WebsoftServer/configs/vfs_config.json.template:ro # шаблон VFS-конфигурации
-      - ./websoft/configs/common/init-vfs.sh:/WebsoftServer/init-vfs.sh:ro  # скрипт инициализации VFS
-      - ./websoft/certs/minio/minio-rootCA.pem:/WebsoftServer/certs/minio/minio-rootCA.pem:ro  # если нужен сертификат MinIO
-      # рабочие директории Websoft HCM
-      - ./websoft/platform.runtime:/WebsoftServer/platform.runtime  
-      - ./websoft/components.runtime:/WebsoftServer/components.runtime
-      - ./websoft/wt_data:/WebsoftServer/wt_data
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    healthcheck:
-      test:
-        - CMD-SHELL
-        - >
-          wget -q --spider http://localhost:8011/spxml_web/main.htm || exit 1
-      interval: 10s
-      timeout: 5s
-      start_period: 90s
-      retries: 12
-    networks:
-      - wt-net
-
-networks:
-  wt-net:
-    driver: bridge
-
-volumes:
-  postgres-data:
-  pgadmin-data:
-  redis-data:
-  grafana-data:
-  loki-data:
-  minio-data:
-  logstash-data:

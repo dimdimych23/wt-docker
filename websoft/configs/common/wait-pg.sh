@@ -1,14 +1,16 @@
 #!/usr/bin/env sh
-set -e
+set -eu
 
 HOST="${HOST_NAME__PG:-postgres}"
 PORT="${HOST_PORT__PG:-5432}"
-DEADLINE="${PG_WAIT_DEADLINE:-60}"      # сек.
-INTERVAL="${PG_WAIT_INTERVAL:-2}"       # сек.
+DEADLINE="${PG_WAIT_DEADLINE:-60}"      # секунд всего
+INTERVAL="${PG_WAIT_INTERVAL:-2}"       # пауза между попытками
 ENABLED="${PG_WAIT_ENABLED:-true}"      # true|false
 ON_TO="${PG_WAIT_ON_TIMEOUT:-fail}"     # fail|skip
 
-[ "$ENABLED" = "true" ] || { echo "[pg-wait] disabled"; exit 0; }
+if [ "$ENABLED" != "true" ]; then
+  echo "[pg-wait] disabled"; exit 0
+fi
 
 echo "[pg-wait] wait ${HOST}:${PORT} (deadline=${DEADLINE}s, interval=${INTERVAL}s, on_timeout=${ON_TO})"
 start_ts=$(date +%s)
@@ -31,12 +33,10 @@ while :; do
     exit 0
   fi
 
-  now=$(date +%s)
-  elapsed=$((now - start_ts))
+  now=$(date +%s); elapsed=$((now - start_ts))
   if [ "$elapsed" -ge "$DEADLINE" ]; then
     echo "[pg-wait] timeout after ${elapsed}s"
     [ "$ON_TO" = "skip" ] && exit 0 || exit 1
   fi
-
   sleep "$INTERVAL"
 done

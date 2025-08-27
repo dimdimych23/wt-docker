@@ -6,6 +6,9 @@
 .idea/
 .DS_Store
 
+# Environment
+.env
+
 # Build
 /distrib/*
 !/distrib/.gitkeep
@@ -14,35 +17,35 @@
 /certs/*
 !/certs/.gitkeep
 
-# websoft
-/websoft/applications/*
+# websoft data/content — держим папки, игнорим содержимое
+/websoft/applications/**
 !/websoft/applications/.gitkeep
-/websoft/ft-idx/*
+
+/websoft/ft-idx/**
 !/websoft/ft-idx/.gitkeep
-/websoft/records/*
-!/websoft/records/.gitkeep
-!/websoft/records/archive/
-/websoft/records/archive/*
-!/websoft/records/archive/.gitkeep
-/websoft/wt_data/*
-!/websoft/wt_data/.gitkeep
-/websoft/components.runtime/*
-!/websoft/components.runtime/.gitkeep
-/websoft/platform.runtime/*
-!/websoft/platform.runtime/.gitkeep
-/websoft/wt_data/*
+
+/websoft/wt_data/**
 !/websoft/wt_data/.gitkeep
 
-# Logs
-/websoft/Logs/vclass-media/*
-!/websoft/Logs/vclass-media/.gitkeep
-/websoft/Logs/vclass-recorder/*
-!/websoft/Logs/vclass-recorder/.gitkeep
-/websoft/Logs/web-backend-1/*
+# ролевые папки: platform и components (web/worker)
+# web-backend
+/websoft/web-backend/platform/**
+!/websoft/web-backend/platform/.gitkeep
+/websoft/web-backend/components/**
+!/websoft/web-backend/components/.gitkeep
+
+# worker-backend
+/websoft/worker-backend/platform/**
+!/websoft/worker-backend/platform/.gitkeep
+/websoft/worker-backend/components/**
+!/websoft/worker-backend/components/.gitkeep
+
+# Логи по нодам
+/websoft/Logs/web-backend-1/**
 !/websoft/Logs/web-backend-1/.gitkeep
-/websoft/Logs/web-backend-2/*
+/websoft/Logs/web-backend-2/**
 !/websoft/Logs/web-backend-2/.gitkeep
-/websoft/Logs/web-backend-init/*
+/websoft/Logs/web-backend-init/**
 !/websoft/Logs/web-backend-init/.gitkeep
-/websoft/Logs/worker-backend/*
+/websoft/Logs/worker-backend/**
 !/websoft/Logs/worker-backend/.gitkeep
