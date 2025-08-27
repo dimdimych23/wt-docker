@@ -25,14 +25,14 @@ services:
     restart: unless-stopped
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      ROOT_USER__MINIO: ${ROOT_USER__MINIO}
+      ROOT_PASSWORD__MINIO: ${ROOT_PASSWORD__MINIO}
     ports:
       - "9000:9000"   # S3 API
       - "9001:9001"   # Web UI (Console)
     volumes:
       - minio-data:/data
-      - ./minio/certs:/root/.minio/certs:ro
+      - ./certs/minio:/root/.minio/certs:ro
     networks:
       - wt-net
 
@@ -42,8 +42,8 @@ services:
       minio:
         condition: service_started
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      ROOT_USER__MINIO: ${ROOT_USER__MINIO}
+      ROOT_PASSWORD__MINIO: ${ROOT_PASSWORD__MINIO}
       S3_SERVICE_URL: ${S3_SERVICE_URL}
       S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID}
       S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY}
@@ -104,16 +104,16 @@ services:
       - BUCKET_APPLICATIONS=${BUCKET_APPLICATIONS}
       - BUCKET_FTIDX=${BUCKET_FTIDX}
       - BUCKET_LOGS=${BUCKET_LOGS}
-      - LOG_LOCATION=${LOG_LOCATION_WEB_INIT}
+      - BUCKET_LOCATION_LOG=${BUCKET_LOCATION_LOG__WEB_INIT}
     ports:
       - "81:8011"
     volumes:
       # конфигурационные файлы Websoft HCM
       - ./websoft/configs/common/license.xfpx:/WebsoftServer/license.xfpx:ro # лицензия
-      - ./websoft/configs/common/resource_sec.json:/WebsoftServer/resource_sec.json:ro
-      - ./websoft/configs/common/xHttp.ini:/WebsoftServer/xHttp.ini:ro
-      - ./websoft/configs/web-backend-init/spxml_unibridge_config.xml:/WebsoftServer/spxml_unibridge_config.xml:ro
-      - ./websoft/configs/web-backend-init/xhttp_config.json:/WebsoftServer/xhttp_config.json:ro
+      - ./websoft/configs/common/resource_sec.json:/WebsoftServer/resource_sec.json
+      - ./websoft/configs/common/xHttp.ini:/WebsoftServer/xHttp.ini
+      - ./websoft/configs/web-backend-init/spxml_unibridge_config.xml:/WebsoftServer/spxml_unibridge_config.xml
+      - ./websoft/configs/web-backend-init/xhttp_config.json:/WebsoftServer/xhttp_config.json
       # конфигурация и сертификат для VFS
       - ./websoft/configs/common/vfs_config.json.template:/WebsoftServer/configs/vfs_config.json.template:ro # шаблон VFS-конфигурации
       - ./websoft/configs/common/init-vfs.sh:/WebsoftServer/init-vfs.sh:ro  # скрипт инициализации VFS

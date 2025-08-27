@@ -16,7 +16,7 @@ BUCKET_APPLICATIONS="${BUCKET_APPLICATIONS:-applications}"
 BUCKET_FTIDX="${BUCKET_FTIDX:-ft-idx}"
 BUCKET_LOGS="${BUCKET_LOGS:-logs}"
 
-LOG_LOCATION="${LOG_LOCATION:-generic/}"
+BUCKET_LOCATION_LOG="${BUCKET_LOCATION_LOG:-generic/}"
 LOG_MIN_CHECK_INTERVAL="${LOG_MIN_CHECK_INTERVAL:-5}"
 LOG_CONSOLIDATION="${LOG_CONSOLIDATION:-true}"
 LOG_CONSOLIDATE_CHECK_INTERVAL="${LOG_CONSOLIDATE_CHECK_INTERVAL:-60}"
@@ -55,7 +55,7 @@ sed -i "s|__BUCKET_APPLICATIONS__|$(escape_sed "$BUCKET_APPLICATIONS")|g" "$tmp"
 sed -i "s|__BUCKET_FTIDX__|$(escape_sed "$BUCKET_FTIDX")|g" "$tmp"
 sed -i "s|__BUCKET_LOGS__|$(escape_sed "$BUCKET_LOGS")|g" "$tmp"
 
-sed -i "s|__LOG_LOCATION__|$(escape_sed "$LOG_LOCATION")|g" "$tmp"
+sed -i "s|__LOG_LOCATION__|$(escape_sed "$BUCKET_LOCATION_LOG")|g" "$tmp"
 
 # bool/number подстановка в шаблон без кавычек
 to_bool () { printf '%s' "$1" | tr 'A-Z' 'a-z'; }

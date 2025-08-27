@@ -1,0 +1,130 @@
+# ================== TEMPLATE: /etc/nginx/nginx.conf.template ==================
+
+events {}
+
+http {
+    # ---------------------- gzip ----------------------
+    gzip              ${NGINX_ENABLE_GZIP};
+    gzip_comp_level   5;
+    gzip_min_length   1024;
+    gzip_types        text/plain text/css application/json application/javascript application/xml+rss
+                      application/xml application/xhtml+xml image/svg+xml;
+
+    # ---------------- WebSocket upgrade ---------------
+    map $http_upgrade $connection_upgrade {
+        default upgrade;
+        ''      close;
+    }
+
+    # --------------- таймауты/буферы ------------------
+    proxy_read_timeout      ${NGINX_PROXY_READ_TIMEOUT};
+    proxy_send_timeout      ${NGINX_PROXY_SEND_TIMEOUT};
+    proxy_connect_timeout   ${NGINX_PROXY_CONNECT_TIMEOUT};
+    proxy_buffering         ${NGINX_PROXY_BUFFERING};
+
+    # DNS для FQDN (Docker: 127.0.0.11)
+    resolver ${NGINX_RESOLVER} ipv6=off valid=30s;
+
+    # ===================== upstreams ===================
+
+    # -- web-backend: балансируем HTTP-нагрузку --
+    upstream web-backend {
+        ${NGINX_UPSTREAM_STRATEGY__WEB};
+
+        server ${UPSTREAM_HOST_NAME__WEB_1}:${UPSTREAM_HOST_PORT__WEB_1} max_fails=${NGINX_UPSTREAM_MAX_FAILS} fail_timeout=${NGINX_UPSTREAM_FAIL_TIMEOUT};
+        server ${UPSTREAM_HOST_NAME__WEB_2}:${UPSTREAM_HOST_PORT__WEB_2} max_fails=${NGINX_UPSTREAM_MAX_FAILS} fail_timeout=${NGINX_UPSTREAM_FAIL_TIMEOUT};
+
+        keepalive ${NGINX_UPSTREAM_KEEPALIVE__WEB};
+    }
+
+    upstream worker-backend {
+        server ${UPSTREAM_HOST_NAME__WORKER}:${UPSTREAM_HOST_PORT__WORKER} max_fails=${NGINX_UPSTREAM_MAX_FAILS} fail_timeout=${NGINX_UPSTREAM_FAIL_TIMEOUT};
+        keepalive ${NGINX_UPSTREAM_KEEPALIVE__WORKER};
+    }
+
+    # -------- фичи (vclass-media + vclass-recorder в ОДНОМ конфиге) --------
+    # если файла нет — Nginx ничего не знает про виртуальные классы
+    include /etc/nginx/conf.d/features/*.conf;
+
+    # ================= HTTP → HTTPS редиректы ================
+
+    server {
+        listen 80;
+        listen [::]:80;
+        server_name ${PUBLIC_FQDN__WEB};
+
+        location = / { return 301 https://$host/default; }
+        location /  { return 301 https://$host$request_uri; }
+    }
+
+    server {
+        listen 80;
+        listen [::]:80;
+        server_name ${PUBLIC_FQDN__VCLASS_MEDIA};
+        location /  { return 301 https://$host$request_uri; }
+    }
+
+    server {
+        listen 80;
+        listen [::]:80;
+        server_name ${PUBLIC_FQDN__VCLASS_RECORDER};
+        location /  { return 301 https://$host$request_uri; }
+    }
+
+    # ================== локальный HTTP к worker =================
+    server {
+        listen ${NGINX_WT_PORT_HTTP__WORKER};
+
+        location / {
+            proxy_pass http://worker-backend;
+            proxy_set_header Host              $host;
+            proxy_set_header X-Real-IP         $remote_addr;
+            proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade   $http_upgrade;
+            proxy_set_header Connection $connection_upgrade;
+        }
+    }
+
+    # ========================= HTTPS-сайты ======================
+
+    # ---- основной портал (web) ----
+    server {
+        listen 443 ssl;
+        http2 on;
+        server_name ${PUBLIC_FQDN__WEB};
+
+        ssl_certificate     /etc/nginx/certs/${NGINX_CERT_WT_CRT};
+        ssl_certificate_key /etc/nginx/certs/${NGINX_CERT_WT_KEY};
+
+        # HSTS: включать в проде при полной готовности
+        add_header Strict-Transport-Security "max-age=${NGINX_HSTS_MAX_AGE}; includeSubDomains; preload" always;
+
+        client_max_body_size 0;
+
+        location = / { return 302 https://$host/default; }
+
+        location / {
+            proxy_pass http://web-backend;
+            proxy_next_upstream error timeout invalid_header http_500 http_502 http_503 http_504 http_403 http_404 http_429;
+
+            proxy_set_header Host              $host;
+            proxy_set_header X-Real-IP         $remote_addr;
+            proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade   $http_upgrade;
+            proxy_set_header Connection $connection_upgrade;
+        }
+
+        location = /favicon.ico { return 204; }
+    }
+
+    # --- vclass-* сайты (если фича подключена файлом, см. include выше) ---
+    # сами блоки — внутри /etc/nginx/conf.d/features/vclass.conf
+
+}
+# ========================= END TEMPLATE ======================================

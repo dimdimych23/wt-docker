@@ -62,5 +62,13 @@
     <add key="CacheDenielOfService" value="true" />
     <add key="StrictWebRole" value="false" />
     <add key="StrictWorkerRole" value="true" />
+    <add key="ComplexHosting" value="
+    [
+      {
+        'Host':'wt.local',
+        'RoleTypes':['WebsocketQueue','WebOnly']
+      }
+    ]
+    " />
   </appSettings>
 </configuration>

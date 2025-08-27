@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<configuration>
+  <appSettings>
+    <!-- Базовые логи -->
+    <add key="LogDirectory" value="Logs" />
+    <add key="LookFailedUrlsOnDisk" value="true" />
+    <add key="FetchBackFoundUrlsOnDisk" value="true" />
+    <add key="SharedConnection" value="false" />
+
+    <!-- Подключение к БД -->
+    <add key="ConnectionString" value="Server=${HOST_NAME__PG}:${HOST_PORT__PG}" />
+    <add key="DBType" value="Postgres" />
+    <add key="Username" value="${DB_USER__PG}" />
+    <add key="Password" value="${DB_PASSWORD__PG}" />
+    <add key="Database" value="${DB_NAME__PG}" />
+    <add key="TrashDatabase" value="trash" />
+    <add key="Mode" value="Normal" />
+    <add key="DateFormat" value="dmy" />
+    <add key="Schema" value="dbo" />
+
+    <!-- Индексация -->
+    <add key="XmlPrimaryIndex" value="false" />
+    <add key="XmlSecondaryIndex" value="false" />
+    <add key="LuceneFTIndex" value="true" />
+    <add key="LuceneFTIndexBlobs" value="true" />
+    <add key="LuceneFTAnalyzerSpecialChars" value="./-_\~':;,?#@!$%^&amp;*()+=|[]{}&gt;&lt;&quot;" />
+    <add key="MaxFTDocs" value="${SPXML_CONF_MAX_FT_DOCS}" />
+    <add key="SharedFTDirectory" value="/WebsoftServer/ft-idx/" />
+
+    <!-- Кэш / Redis -->
+    <add key="CacheEnabled" value="true" />
+    <add key="CacheMaxMemoryItemLenBytes" value="${SPXML_CONF_REDIS_MAXMEMORY_ITEM_BYTES}" />
+    <add key="CacheMemoryLimitPercentage" value="${SPXML_CONF_REDIS_LIMIT_MEMORY_PERCENTAGE}" />
+    <add key="CacheMemoryLimitMegabytes" value="${SPXML_CONF_REDIS_LIMIT_MEMORY_MEGABYTES}" />
+    <add key="CacheTime" value="30" />
+
+    <!-- Распределённый кэш -->
+    <add key="DistributedCache" value="true" />
+    <add key="DistributedCacheType" value="spxml_redis_cache" />
+    <add key="DistributedCacheConfig" value="${HOST_NAME__REDIS}:${HOST_PORT__REDIS}, password=${PASSWORD__REDIS}, ${OPTS__REDIS}" />
+
+    <!-- Общие флаги -->
+    <add key="PreventNonIndexOrder" value="false" />
+    <add key="SqlInjection" value="true" />
+    <add key="ProviderInfo" value="false" />
+    <add key="ProviderManagement" value="false" />
+    <add key="MaxActiveRequests" value="30" />
+    <add key="EventTimeout" value="-1" />
+    <add key="PassAfterEventTimeout" value="true" />
+    <add key="LocalObjectCache" value="false" />
+    <add key="LocalFileCache" value="false" />
+    <add key="XQueryTemplateCache" value="true" />
+    <add key="LinkedCatalogsSchemaDeletions" value="true" />
+    <add key="AsyncCatalogProcessing" value="false" />
+    <add key="AutomaticSyncCatalog" value="false" />
+    <add key="UpgradeLocked" value="${SPXML_CONF_UPGRADE_LOCKED}" />
+    <add key="InPlaceUpgrade" value="${SPXML_CONF_IN_PLACE_UPGRADE}" />
+    <add key="Collation" value="" />
+    <add key="IndexOptimizerMode" value="none" />
+    <add key="InnerJoin" value="true" />
+    <add key="LocalObjectCacheTime" value="30" />
+    <add key="LocalObjectClientCache" value="false" />
+
+    <!-- Кластеризация -->
+    <add key="Cluster" value="true" />
+    <add key="SessionExpiration" value="${SPXML_CONF_SESSION_EXPIRATION}" />
+    <add key="MaxSessionsCount" value="${SPXML_CONF_MAX_SESSIONS_COUNT}" />
+
+    <!-- Защита -->
+    <add key="CacheDenielOfService" value="true" />
+
+    <!-- Роли -->
+    <add key="StrictWebRole" value="${SPXML_CONF_STRICT_WEBROLE}" />
+    <add key="StrictWorkerRole" value="${SPXML_CONF_STRICT_WORKERROLE}" />
+
+    <!-- Функции роли (перечень через запятую) -->
+    <!-- Примеры: WebsocketQueue,WebOnly | MediaService | Agent,Notification,ScriptQueue -->
+    <add key="StrictRoleTypes"  value="${SPXML_CONF_STRICT_ROLE_TYPES}" />
+
+    <!-- ComplexHosting: карта публичных FQDN → какие RoleTypes за ними стоят -->
+    <add key="ComplexHosting" value="${SPXML_CONF_COMPLEX_HOSTING_BLOCK}"/>
+  </appSettings>
+</configuration>

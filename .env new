@@ -1,0 +1,120 @@
+###############################################################################
+#                          PROJECT / NETWORK / TIME                           #
+###############################################################################
+PROJECT_NAME=wt-docker
+COMPOSE_PROJECT_NAME=wt-docker
+NETWORK_NAME=wt-net
+TZ=Europe/Moscow
+
+###############################################################################
+#                                  POSTGRESQL                                 #
+###############################################################################
+# Параметры подключения WebSoft к БД
+HOST_NAME__PG=postgres                  # DNS-имя сервиса в docker сети
+HOST_PORT__PG=5432
+DB_NAME__PG=wt
+DB_USER__PG=wt
+DB_PASSWORD__PG=                       # ← заполнить на своей среде или использовать *_FILE
+
+# Доступ к pgAdmin (UI)
+PGADMIN_DEFAULT_EMAIL=admin@local.com
+PGADMIN_DEFAULT_PASSWORD=          # ← задать на своей среде
+
+###############################################################################
+#                                    REDIS                                    #
+###############################################################################
+HOST_NAME__REDIS=redis
+HOST_PORT__REDIS=6379
+REDIS_PASSWORD=                    # для prod задать; dev можно пустым
+OPTS__REDIS=abortConnect=false, allowAdmin=true, connectTimeout=5000, keepAlive=10, syncTimeout=1000
+
+###############################################################################
+#                                 MINIO / S3                                  #
+###############################################################################
+# Root для самого MinIO (только у контейнера minio)
+ROOT_USER__MINIO=admin
+ROOT_PASSWORD__MINIO=admin123
+
+# Креды приложения (WebSoft, Logstash)
+S3_SERVICE_URL=https://minio:9000
+S3_ACCESS_KEY_ID=
+S3_SECRET_ACCESS_KEY=
+S3_FORCE_PATH_STYLE=true
+S3_TIMEOUT=60
+S3_TRUSTED_CA_PATH=/WebsoftServer/certs/minio/minio-rootCA.pem
+
+# read-only пользователь для чтения логов
+S3_LOGS_RO_ACCESS_KEY_ID=
+S3_LOGS_RO_SECRET_ACCESS_KEY=
+
+# Имена бакетов
+BUCKET_WEBTUTOR=webtutor
+BUCKET_SPXML_BLOBS=spxml-blobs
+BUCKET_APPLICATIONS=applications
+BUCKET_FTIDX=ft-idx
+BUCKET_RECORDS=records
+BUCKET_LOGS=logs
+
+# Публичность контента (обычно false)
+BUCKET_WEBTUTOR_PUBLIC=false
+
+###############################################################################
+#                               WEBSoft / LOGS / VFS                          #
+###############################################################################
+# Префиксы логов (псевдо-папки) в бакете LOGS
+BUCKET_LOCATION_LOG__WEB_1=web-backend-1/
+BUCKET_LOCATION_LOG__WEB_2=web-backend-2/
+BUCKET_LOCATION_LOG__WORKER=worker-backend/
+BUCKET_LOCATION_LOG__VCLASS_MEDIA=vclass-media/
+BUCKET_LOCATION_LOG__VCLASS_RECORDER=vclass-recorder/
+BUCKET_LOCATION_LOG__WEB_INIT=web-backend-init/
+
+# Схлопывание логов
+LOG_MIN_CHECK_INTERVAL=5
+LOG_CONSOLIDATION=true
+LOG_CONSOLIDATE_CHECK_INTERVAL=60
+LOG_FULL_CONSOLIDATION=true
+
+# Пасcивная миграция в VFS
+VFS_LOOK_ON_LOCAL=true
+VFS_FETCH_BACK=true
+VFS_DELETE_LOCAL_AFTER_FETCH=false
+
+###############################################################################
+#                           NGINX / CERTIFICATES                              #
+###############################################################################
+NGINX_CERTS_DIR=./websoft/certs/wt.local
+NGINX_EXTRA_PORT_HTTP=81
+NGINX_SERVER_NAME=wt.local
+
+###############################################################################
+#                              MONITORING / LOKI                              #
+###############################################################################
+LOKI_SERVICE_URL=http://loki:3100
+LOKI_JOB_LABEL=websoft-hcm
+
+# Grafana
+GF_SECURITY_ADMIN_USER=admin
+GF_SECURITY_ADMIN_PASSWORD=             # ← задать
+GF_USERS_ALLOW_SIGN_UP=false
+
+# Logstash S3 → Loki
+ROLE_FALLBACK=role_not_found
+ENV_FALLBACK=env_not_found
+LOG_TYPE_FALLBACK=log_type_not_found
+
+###############################################################################
+#                           HEALTHCHECK TIMINGS (opt)                          #
+###############################################################################
+HC_INTERVAL__WEB=10s
+HC_TIMEOUT__WEB=5s
+HC_START_PERIOD__WEB=90s
+HC_RETRIES__WEB=12
+
+HC_INTERVAL__PG=5s
+HC_TIMEOUT__PG=10s
+HC_RETRIES__PG=10
+
+HC_INTERVAL__REDIS=5s
+HC_TIMEOUT__REDIS=3s
+HC_RETRIES__REDIS=5

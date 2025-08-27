@@ -3,8 +3,8 @@ set -Eeuox pipefail
 
 # -------- Обязательные переменные окружения --------
 : "${S3_SERVICE_URL:?S3_SERVICE_URL is required (e.g. https://minio:9000)}"
-: "${MINIO_ROOT_USER:?MINIO_ROOT_USER is required}"
-: "${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD is required}"
+: "${ROOT_USER__MINIO:?ROOT_USER__MINIO is required}"
+: "${ROOT_PASSWORD__MINIO:?ROOT_PASSWORD__MINIO is required}"
 
 # RW учётка для WebTutor
 : "${S3_ACCESS_KEY_ID:?S3_ACCESS_KEY_ID is required}"
@@ -33,7 +33,7 @@ log() { printf '%s\n' "[minio-mc-init] $*"; }
 # -------- 1) alias к MinIO (ждём готовности HTTPS) --------
 log "Configuring mc alias 'local' → ${S3_SERVICE_URL}"
 ATTEMPTS=0; MAX_ATTEMPTS=30
-until $MC alias set local "${S3_SERVICE_URL}" "${MINIO_ROOT_USER}" "${MINIO_ROOT_PASSWORD}" >/dev/null 2>&1; do
+until $MC alias set local "${S3_SERVICE_URL}" "${ROOT_USER__MINIO}" "${ROOT_PASSWORD__MINIO}" >/dev/null 2>&1; do
   ATTEMPTS=$((ATTEMPTS+1))
   [ "$ATTEMPTS" -ge "$MAX_ATTEMPTS" ] && { log "ERROR: alias set failed after ${ATTEMPTS} attempts"; exit 1; }
   log "MinIO not ready yet, retry ${ATTEMPTS}/${MAX_ATTEMPTS} ..."

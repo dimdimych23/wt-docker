@@ -1,0 +1,63 @@
+# ================= /etc/nginx/conf.d/features/vclass.conf (template) =========
+# Содержит и upstream'ы, и server'ы для vclass-media и vclass-recorder
+# Рендерится из /etc/nginx/templates/features/vclass.feature.template
+
+# -------- upstream: vclass-media (HTTP внутри) --------
+upstream vclass-media {
+  server ${UPSTREAM_HOST_NAME__VCLASS_MEDIA}:${UPSTREAM_HOST_PORT__VCLASS_MEDIA} max_fails=${NGINX_UPSTREAM_MAX_FAILS} fail_timeout=${NGINX_UPSTREAM_FAIL_TIMEOUT};
+  keepalive ${NGINX_UPSTREAM_KEEPALIVE__VCLASS};
+}
+
+# -------- upstream: vclass-recorder (обычно HTTPS:8443) --------
+upstream vclass-recorder {
+  server ${UPSTREAM_HOST_NAME__VCLASS_RECORDER}:${UPSTREAM_HOST_PORT__VCLASS_RECORDER} max_fails=${NGINX_UPSTREAM_MAX_FAILS} fail_timeout=${NGINX_UPSTREAM_FAIL_TIMEOUT};
+  keepalive ${NGINX_UPSTREAM_KEEPALIVE__RECORDER};
+}
+
+# -------- server: vclass-media --------
+server {
+  listen 443 ssl;
+  http2 on;
+  server_name ${PUBLIC_FQDN__VCLASS_MEDIA};
+
+  ssl_certificate     /etc/nginx/certs/${NGINX_CERT_WT_CRT};
+  ssl_certificate_key /etc/nginx/certs/${NGINX_CERT_WT_KEY};
+
+  location / {
+    proxy_pass http://vclass-media;
+
+    proxy_set_header Host              $host;
+    proxy_set_header X-Real-IP         $remote_addr;
+    proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade   $http_upgrade;
+    proxy_set_header Connection $connection_upgrade;
+  }
+}
+
+# -------- server: vclass-recorder --------
+server {
+  listen 443 ssl;
+  http2 on;
+  server_name ${PUBLIC_FQDN__VCLASS_RECORDER};
+
+  ssl_certificate     /etc/nginx/certs/${NGINX_CERT_WT_CRT};
+  ssl_certificate_key /etc/nginx/certs/${NGINX_CERT_WT_KEY};
+
+  location / {
+    proxy_pass https://vclass-recorder;
+
+    proxy_set_header Host              $host;
+    proxy_set_header X-Real-IP         $remote_addr;
+    proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+
+    proxy_ssl_server_name on;
+    proxy_ssl_verify ${NGINX_PROXY_SSL_VERIFY__VCLASS_RECORDER};
+    # Если verify=on и свой CA:
+    # proxy_ssl_trusted_certificate /etc/nginx/certs/backend-ca.pem;
+  }
+}
+# ========================= END vclass.feature =================================

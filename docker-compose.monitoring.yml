@@ -9,7 +9,7 @@ services:
       - "443:443"
     volumes:
       - ./nginx-proxy/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./certs/wt:/etc/nginx/certs:ro
+      - ./websoft/certs/wt.local:/etc/nginx/certs:ro
     depends_on:
       web-backend-1:
         condition: service_started
