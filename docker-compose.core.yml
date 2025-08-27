@@ -133,6 +133,36 @@ services:
       BUCKET_FTIDX: ${BUCKET_FTIDX}
       BUCKET_LOGS: ${BUCKET_LOGS}
       BUCKET_LOCATION_LOG: ${BUCKET_LOCATION_LOG__WEB_1}
+      # ====== SPXML (WEB-1) — роли/кластер/кэш/ComplexHosting ======
+      SPXML_CONF_SESSION_EXPIRATION:              ${SPXML_CONF_SESSION_EXPIRATION__WEB}
+      SPXML_CONF_MAX_SESSIONS_COUNT:              ${SPXML_CONF_MAX_SESSIONS_COUNT__WEB}
+      SPXML_CONF_MAX_FT_DOCS:                     ${SPXML_CONF_MAX_FT_DOCS__WEB}
+      SPXML_CONF_UPGRADE_LOCKED:                  ${SPXML_CONF_UPGRADE_LOCKED__WEB}
+      SPXML_CONF_IN_PLACE_UPGRADE:                ${SPXML_CONF_IN_PLACE_UPGRADE__WEB}
+      SPXML_CONF_REDIS_LIMIT_MEMORY_PERCENTAGE:   ${SPXML_CONF_REDIS_LIMIT_MEMORY_PERCENTAGE__WEB}
+      SPXML_CONF_REDIS_LIMIT_MEMORY_MEGABYTES:    ${SPXML_CONF_REDIS_LIMIT_MEMORY_MEGABYTES__WEB}
+      SPXML_CONF_LOCAL_OBJECT_CACHE:              ${SPXML_CONF_LOCAL_OBJECT_CACHE__WEB}
+      SPXML_CONF_LOCAL_FILE_CACHE:                ${SPXML_CONF_LOCAL_FILE_CACHE__WEB}
+
+      SPXML_CONF_STRICT_WEBROLE:                  ${SPXML_CONF_STRICT_WEBROLE__WEB}
+      SPXML_CONF_STRICT_WORKERROLE:               ${SPXML_CONF_STRICT_WORKERROLE__WEB}
+      SPXML_CONF_STRICT_ROLE_TYPES:               ${SPXML_CONF_STRICT_ROLE_TYPES__WEB}
+
+      # ЕДИНЫЙ ключ для шаблона spxml_unibridge_config.xml: ComplexHosting как «сырой массив»
+      SPXML_CONF_COMPLEX_HOSTING_BLOCK:           ${SPXML_CONF_COMPLEX_HOSTING_BLOCK__WEB}
+
+      # ====== Подстановки для шаблона SPXML: БД и Redis (нужны и на WEB) ======
+      HOST_NAME__PG:                              ${HOST_NAME__PG}
+      HOST_PORT__PG:                              ${HOST_PORT__PG}
+      DB_NAME__PG:                                ${DB_NAME__PG}
+      DB_USER__PG:                                ${DB_USER__PG}
+      DB_PASSWORD__PG:                            ${DB_PASSWORD__PG}
+
+      HOST_NAME__REDIS:                           ${HOST_NAME__REDIS}
+      HOST_PORT__REDIS:                           ${HOST_PORT__REDIS}
+      OPTS__REDIS:                                ${OPTS__REDIS}
+      PASSWORD__REDIS:                            ${PASSWORD__REDIS}
+      SPXML_CONF_REDIS_MAXMEMORY_ITEM_BYTES:      ${SPXML_CONF_REDIS_MAXMEMORY_ITEM_BYTES}
     volumes:
       # Конфиги WebSoft
       - ./websoft/configs/common/license.xfpx:/WebsoftServer/license.xfpx:ro
@@ -190,6 +220,36 @@ services:
       BUCKET_FTIDX: ${BUCKET_FTIDX}
       BUCKET_LOGS: ${BUCKET_LOGS}
       BUCKET_LOCATION_LOG: ${BUCKET_LOCATION_LOG__WEB_2}
+            # ====== SPXML (WEB-2) — роли/кластер/кэш/ComplexHosting ======
+      SPXML_CONF_SESSION_EXPIRATION:              ${SPXML_CONF_SESSION_EXPIRATION__WEB}
+      SPXML_CONF_MAX_SESSIONS_COUNT:              ${SPXML_CONF_MAX_SESSIONS_COUNT__WEB}
+      SPXML_CONF_MAX_FT_DOCS:                     ${SPXML_CONF_MAX_FT_DOCS__WEB}
+      SPXML_CONF_UPGRADE_LOCKED:                  ${SPXML_CONF_UPGRADE_LOCKED__WEB}
+      SPXML_CONF_IN_PLACE_UPGRADE:                ${SPXML_CONF_IN_PLACE_UPGRADE__WEB}
+      SPXML_CONF_REDIS_LIMIT_MEMORY_PERCENTAGE:   ${SPXML_CONF_REDIS_LIMIT_MEMORY_PERCENTAGE__WEB}
+      SPXML_CONF_REDIS_LIMIT_MEMORY_MEGABYTES:    ${SPXML_CONF_REDIS_LIMIT_MEMORY_MEGABYTES__WEB}
+      SPXML_CONF_LOCAL_OBJECT_CACHE:              ${SPXML_CONF_LOCAL_OBJECT_CACHE__WEB}
+      SPXML_CONF_LOCAL_FILE_CACHE:                ${SPXML_CONF_LOCAL_FILE_CACHE__WEB}
+
+      SPXML_CONF_STRICT_WEBROLE:                  ${SPXML_CONF_STRICT_WEBROLE__WEB}
+      SPXML_CONF_STRICT_WORKERROLE:               ${SPXML_CONF_STRICT_WORKERROLE__WEB}
+      SPXML_CONF_STRICT_ROLE_TYPES:               ${SPXML_CONF_STRICT_ROLE_TYPES__WEB}
+
+      # ComplexHosting — «сырой массив» из .env (Вариант B)
+      SPXML_CONF_COMPLEX_HOSTING_BLOCK:           ${SPXML_CONF_COMPLEX_HOSTING_BLOCK__WEB}
+
+      # ====== БД/Redis ======
+      HOST_NAME__PG:                              ${HOST_NAME__PG}
+      HOST_PORT__PG:                              ${HOST_PORT__PG}
+      DB_NAME__PG:                                ${DB_NAME__PG}
+      DB_USER__PG:                                ${DB_USER__PG}
+      DB_PASSWORD__PG:                            ${DB_PASSWORD__PG}
+
+      HOST_NAME__REDIS:                           ${HOST_NAME__REDIS}
+      HOST_PORT__REDIS:                           ${HOST_PORT__REDIS}
+      OPTS__REDIS:                                ${OPTS__REDIS}
+      PASSWORD__REDIS:                            ${PASSWORD__REDIS}
+      SPXML_CONF_REDIS_MAXMEMORY_ITEM_BYTES:      ${SPXML_CONF_REDIS_MAXMEMORY_ITEM_BYTES}
     volumes:
       - ./websoft/configs/common/license.xfpx:/WebsoftServer/license.xfpx:ro
       - ./websoft/configs/common/resource_sec.json:/WebsoftServer/resource_sec.json
@@ -223,7 +283,7 @@ services:
     hostname: wt_dev
     platform: linux/amd64
     restart: always
-    command: ["/bin/sh","-lc","/WebsoftServer/init-vfs.sh"]
+    command: ["/bin/sh","-lc","/WebsoftServer/init-spxml_unibridge_config.sh && /WebsoftServer/init-vfs.sh"]
     environment:
       NodesPoolId: "3"
       ExternalDeployment: "true"
@@ -261,12 +321,16 @@ services:
       SPXML_CONF_STRICT_WORKERROLE: ${SPXML_CONF_STRICT_WORKERROLE__WORKER}
       SPXML_CONF_REDIS_LIMIT_MEMORY_PERCENTAGE: ${SPXML_CONF_REDIS_LIMIT_MEMORY_PERCENTAGE__WORKER}
       SPXML_CONF_REDIS_LIMIT_MEMORY_MEGABYTES: ${SPXML_CONF_REDIS_LIMIT_MEMORY_MEGABYTES__WORKER}
+      SPXML_CONF_COMPLEX_HOSTING_BLOCK:           ${SPXML_CONF_COMPLEX_HOSTING_BLOCK__WORKER}
+      SPXML_CONF_STRICT_ROLE_TYPES:               ${SPXML_CONF_STRICT_ROLE_TYPES__WORKER}
     volumes:
       - ./websoft/configs/common/license.xfpx:/WebsoftServer/license.xfpx:ro
       - ./websoft/configs/common/resource_sec.json:/WebsoftServer/resource_sec.json
       - ./websoft/configs/common/xHttp.ini:/WebsoftServer/xHttp.ini
-      - ./websoft/configs/worker-backend/spxml_unibridge_config.xml:/WebsoftServer/spxml_unibridge_config.xml
       - ./websoft/configs/worker-backend/xhttp_config.json:/WebsoftServer/xhttp_config.json
+      # - ./websoft/configs/worker-backend/spxml_unibridge_config.xml:/WebsoftServer/spxml_unibridge_config.xml
+      - ./websoft/configs/common/spxml_unibridge_config.xml.template:/WebsoftServer/configs/spxml_unibridge_config.xml.template:ro
+      - ./websoft/configs/common/init-spxml_unibridge_config.sh:/WebsoftServer/init-spxml_unibridge_config.sh:ro
       - ./websoft/configs/common/vfs_config.json.template:/WebsoftServer/configs/vfs_config.json.template:ro
       - ./websoft/configs/common/init-vfs.sh:/WebsoftServer/init-vfs.sh:ro
       - ./certs:/WebsoftServer/certs
