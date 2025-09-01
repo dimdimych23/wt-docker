@@ -145,6 +145,12 @@ services:
       HOST_PORT__REDIS:                           ${HOST_PORT__REDIS}
       PASSWORD__REDIS:                            ${PASSWORD__REDIS}
       OPTS__REDIS:                                ${OPTS__REDIS}
+      # ====== для OmniCode ======
+      WebTutorServerDir: ${WEBTUTOR_SERVER_DIR}
+      DebugWebTutorServerDir: ${DEBUG_WEBTUTOR_SERVER_DIR}
+      DefaultNetCoreTargetFramework: ${DEFAULT_NETCORE_TARGET_FRAMEWORK}
+      DefaultNetStandardTargetFramework: ${DEFAULT_NETSTANDARD_TARGET_FRAMEWORK}
+      WEBSOFT_MSBUILD_SDK_PATH: ${WEBSOFT_MSBUILD_SDK_PATH}
     volumes:
       # Конфиги WebSoft
       - ./websoft/configs/common/license.xfpx:/WebsoftServer/license.xfpx:ro
@@ -156,7 +162,10 @@ services:
       - ./websoft/configs/common/init-spxml.sh:/WebsoftServer/init-spxml.sh:ro
       - ./websoft/configs/common/wait-pg.sh:/WebsoftServer/wait-pg.sh:ro
       # Рантайм каталоги
+      - ./websoft/ft-idx:/WebsoftServer/ft-idx
       - ./websoft/wt_data:/WebsoftServer/wt_data
+      - ./websoft/web/webtutor:/WebsoftServer/wt/web/webtutor
+      - ./websoft/components:/WebsoftServer/components
       - ./websoft/runtimes/web-backend/platform:/WebsoftServer/platform.runtime
       - ./websoft/runtimes/web-backend/components:/WebsoftServer/components.runtime
       # Логи 
@@ -221,6 +230,12 @@ services:
       HOST_PORT__REDIS:                           ${HOST_PORT__REDIS}
       PASSWORD__REDIS:                            ${PASSWORD__REDIS}
       OPTS__REDIS:                                ${OPTS__REDIS}
+      # ====== для OmniCode ======
+      WebTutorServerDir: ${WEBTUTOR_SERVER_DIR}
+      DebugWebTutorServerDir: ${DEBUG_WEBTUTOR_SERVER_DIR}
+      DefaultNetCoreTargetFramework: ${DEFAULT_NETCORE_TARGET_FRAMEWORK}
+      DefaultNetStandardTargetFramework: ${DEFAULT_NETSTANDARD_TARGET_FRAMEWORK}
+      WEBSOFT_MSBUILD_SDK_PATH: ${WEBSOFT_MSBUILD_SDK_PATH}
     volumes:
       # Конфиги WebSoft
       - ./websoft/configs/common/license.xfpx:/WebsoftServer/license.xfpx:ro
@@ -232,7 +247,10 @@ services:
       - ./websoft/configs/common/init-spxml.sh:/WebsoftServer/init-spxml.sh:ro
       - ./websoft/configs/common/wait-pg.sh:/WebsoftServer/wait-pg.sh:ro
       # Рантайм каталоги
+      - ./websoft/ft-idx:/WebsoftServer/ft-idx
       - ./websoft/wt_data:/WebsoftServer/wt_data
+      - ./websoft/web/webtutor:/WebsoftServer/wt/web/webtutor
+      - ./websoft/components:/WebsoftServer/components
       - ./websoft/runtimes/web-backend/platform:/WebsoftServer/platform.runtime
       - ./websoft/runtimes/web-backend/components:/WebsoftServer/components.runtime
       # Логи 
@@ -297,6 +315,12 @@ services:
       HOST_PORT__REDIS:                           ${HOST_PORT__REDIS}
       PASSWORD__REDIS:                            ${PASSWORD__REDIS}
       OPTS__REDIS:                                ${OPTS__REDIS}
+      # ====== для OmniCode ======
+      WebTutorServerDir: ${WEBTUTOR_SERVER_DIR}
+      DebugWebTutorServerDir: ${DEBUG_WEBTUTOR_SERVER_DIR}
+      DefaultNetCoreTargetFramework: ${DEFAULT_NETCORE_TARGET_FRAMEWORK}
+      DefaultNetStandardTargetFramework: ${DEFAULT_NETSTANDARD_TARGET_FRAMEWORK}
+      WEBSOFT_MSBUILD_SDK_PATH: ${WEBSOFT_MSBUILD_SDK_PATH}
     volumes:
       # Конфиги WebSoft
       - ./websoft/configs/common/license.xfpx:/WebsoftServer/license.xfpx:ro
@@ -308,7 +332,10 @@ services:
       - ./websoft/configs/common/init-spxml.sh:/WebsoftServer/init-spxml.sh:ro
       - ./websoft/configs/common/wait-pg.sh:/WebsoftServer/wait-pg.sh:ro
       # Рантайм каталоги
+      - ./websoft/ft-idx:/WebsoftServer/ft-idx
       - ./websoft/wt_data:/WebsoftServer/wt_data
+      - ./websoft/web/webtutor:/WebsoftServer/wt/web/webtutor
+      - ./websoft/components:/WebsoftServer/components
       - ./websoft/runtimes/worker-backend/platform:/WebsoftServer/platform.runtime
       - ./websoft/runtimes/worker-backend/components:/WebsoftServer/components.runtime
       # Логи 
@@ -330,7 +357,7 @@ services:
 
   postgres:
     profiles: ["local-postgres"]
-    image: postgres:16
+    image: ${POSTGRES_IMAGE}
     restart: always
     environment:
       POSTGRES_USER: ${DB_USER__PG}

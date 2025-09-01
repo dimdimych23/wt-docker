@@ -287,3 +287,10 @@ docker compose --profile local-postgres down -v
 - Вопросы по конфигурации SPXML/xHttp — в каталоге `websoft/configs/*`.
 - Логи: `./websoft/Logs/<service>` и `docker logs <container>`.
 - Если понадобятся MinIO/мониторинг — используйте другой compose-
+
+### clear-logs.sh
+Скрипт для очистки примонтированных логов (web-backend-1, web-backend-2, worker-backend).  
+Запуск:
+```bash
+./websoft/configs/common/clear-logs.sh
+```

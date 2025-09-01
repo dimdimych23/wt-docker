@@ -49,3 +49,7 @@
 !/websoft/Logs/web-backend-init/.gitkeep
 /websoft/Logs/worker-backend/**
 !/websoft/Logs/worker-backend/.gitkeep
+
+# websoft/components
+/websoft/components/**
+!/websoft/components/.gitkeep
