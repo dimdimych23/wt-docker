@@ -23,8 +23,10 @@ LABEL org.opencontainers.image.title="${IMAGE_TITLE}" \
       tmk.components="${COMPONENTS_MANIFEST}" \
       tmk.notes="${LABEL_NOTES}"
 
-# Где в репозитории лежат твои компоненты (каталог с подпапками компонентов)
+# Где в репозитории лежат твои компоненты
 ARG COMPONENTS_SRC
-# Кладём поверх базового набора компонентов
-# Ожидается структура: websoft/components.src/<ComponentName>/*
 COPY ${COMPONENTS_SRC}/ /WebsoftServer/components/
+
+# >>> НОВОЕ: уложим структурный JSON-манифест внутрь образа
+ARG COMPONENTS_MANIFEST_JSON="[]"
+RUN printf '%s' "${COMPONENTS_MANIFEST_JSON}" > /WebsoftServer/components.manifest.json
