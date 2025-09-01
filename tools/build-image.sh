@@ -5,10 +5,25 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 # 1) env
 ENV_BUILD="${ROOT}/.env.build"
 if [ -f "$ENV_BUILD" ]; then
-  export $(grep -E '^[A-Z0-9_]+=' "$ENV_BUILD" | xargs)
+  while IFS='=' read -r key val; do
+    # пропускаем пустые строки и комментарии
+    [ -z "$key" ] && continue
+    case "$key" in \#*) continue ;; esac
+    # только валидные ключи ВЕРХНИМ РЕГИСТРОМ/цифры/подчёркивание
+    case "$key" in
+      [A-Z0-9_]*)
+        # отрезаем инлайновый комментарий после значения
+        val="${val%%#*}"
+        # обрезаем пробелы по краям
+        val="$(printf '%s' "$val" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+        export "$key=$val"
+        ;;
+    esac
+  done < "$ENV_BUILD"
 fi
 
 WT_BASE_IMAGE="${WT_BASE_IMAGE:-websoft/hcm:2025.2.1225}"
+BUILD_PLATFORM="${BUILD_PLATFORM:-linux/amd64}"
 IMAGE_REPO="${IMAGE_REPO:-hcm/platform}"
 IMAGE_TAG="${IMAGE_TAG:-2025.2.1225-tmk.1}"
 
@@ -17,7 +32,7 @@ IMAGE_DESCRIPTION="${IMAGE_DESCRIPTION:-HCM with curated components}"
 LABEL_NOTES="${LABEL_NOTES:-}"
 
 COMPONENTS_SRC="${COMPONENTS_SRC:-websoft/components.src}"
-COMPONENTS_LIST="${COMPONENTS_LIST:-}"   # <--- НОВОЕ
+COMPONENTS_EXTRA_LIST="${COMPONENTS_EXTRA_LIST:-}"   # <--- НОВОЕ
 
 REGISTRY_HOST="${REGISTRY_HOST:-}"
 REGISTRY_USER="${REGISTRY_USER:-}"
@@ -33,7 +48,7 @@ fi
 echo "[build] base:   $WT_BASE_IMAGE"
 echo "[build] image:  $FULL_IMAGE"
 echo "[build] comps:  $COMPONENTS_SRC"
-[ -z "$COMPONENTS_LIST" ] || echo "[build] list:   $COMPONENTS_LIST"
+[ -z "$COMPONENTS_EXTRA_LIST" ] || echo "[build] list:   $COMPONENTS_EXTRA_LIST"
 
 # Каталог источника компонентов
 SRC_DIR="${ROOT}/${COMPONENTS_SRC}"
@@ -43,20 +58,20 @@ if [ ! -d "$SRC_DIR" ]; then
 fi
 
 # 2) Подтянем базу и метаданные
-docker pull "$WT_BASE_IMAGE" >/dev/null 2>&1 || true
+docker pull --platform="$BUILD_PLATFORM" "$WT_BASE_IMAGE" >/dev/null 2>&1 || true
 BASE_DIGEST="$(docker inspect --format='{{index .RepoDigests 0}}' "$WT_BASE_IMAGE" 2>/dev/null || echo "")"
 GIT_SHA="$(git rev-parse --short HEAD 2>/dev/null || echo "")"
 BUILD_DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
-# 3) Подготовим «выбранные» компоненты (если задан COMPONENTS_LIST)
+# 3) Подготовим «выбранные» компоненты (если задан COMPONENTS_EXTRA_LIST)
 #    Чтобы COPY не тащил всё подряд, соберём временный каталог из выбранных папок
 SELECTED_DIR="${ROOT}/build/components.selected"
 rm -rf "$SELECTED_DIR"; mkdir -p "$SELECTED_DIR"
 
 trim() { awk '{$1=$1;print}'; }
 
-if [ -n "$COMPONENTS_LIST" ]; then
-  IFS=',' read -r -a ITEMS <<< "$COMPONENTS_LIST"
+if [ -n "$COMPONENTS_EXTRA_LIST" ]; then
+  IFS=',' read -r -a ITEMS <<< "$COMPONENTS_EXTRA_LIST"
   COMPONENTS_ARRAY=()
   for raw in "${ITEMS[@]}"; do
     comp="$(echo "$raw" | tr -d '\r' | trim)"
@@ -99,6 +114,7 @@ echo "[build] using src: $EFFECTIVE_SRC"
 
 # 4) Сборка
 docker build \
+  --platform="$BUILD_PLATFORM" \
   --build-arg WT_BASE_IMAGE="$WT_BASE_IMAGE" \
   --build-arg COMPONENTS_SRC="$EFFECTIVE_SRC" \
   --build-arg IMAGE_TITLE="$IMAGE_TITLE" \
@@ -127,16 +143,16 @@ else
 fi
 
 # 6) Обновим WT_IMAGE в .env
-PLATFORM_ENV="${ROOT}/.env"
-if [ -f "$PLATFORM_ENV" ]; then
-  if grep -q '^WT_IMAGE=' "$PLATFORM_ENV"; then
-    sed -i.bak "s#^WT_IMAGE=.*#WT_IMAGE=${FULL_IMAGE}#g" "$PLATFORM_ENV"
-  else
-    echo "WT_IMAGE=${FULL_IMAGE}" >> "$PLATFORM_ENV"
-  fi
-  echo "[env] WT_IMAGE set to ${FULL_IMAGE} in .env"
-else
-  echo "[env] WARNING: .env не найден — пропустил обновление"
-fi
+# PLATFORM_ENV="${ROOT}/.env"
+# if [ -f "$PLATFORM_ENV" ]; then
+#   if grep -q '^WT_IMAGE=' "$PLATFORM_ENV"; then
+#     sed -i.bak "s#^WT_IMAGE=.*#WT_IMAGE=${FULL_IMAGE}#g" "$PLATFORM_ENV"
+#   else
+#     echo "WT_IMAGE=${FULL_IMAGE}" >> "$PLATFORM_ENV"
+#   fi
+#   echo "[env] WT_IMAGE set to ${FULL_IMAGE} in .env"
+# else
+#   echo "[env] WARNING: .env не найден — пропустил обновление"
+# fi
 
 echo "[done] image ready: ${FULL_IMAGE}"

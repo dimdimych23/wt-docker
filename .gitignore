@@ -6,6 +6,9 @@
 .idea/
 .DS_Store
 
+# Сборка образов
+/build/**
+
 # Environment
 .env
 
@@ -29,16 +32,16 @@
 
 # ролевые папки: platform и components (web/worker)
 # web-backend
-/websoft/web-backend/platform/**
-!/websoft/web-backend/platform/.gitkeep
-/websoft/web-backend/components/**
-!/websoft/web-backend/components/.gitkeep
+/websoft/runtimes/web-backend/platform/**
+!/websoft/runtimes/web-backend/platform/.gitkeep
+/websoft/runtimes/web-backend/components/**
+!/websoft/runtimes/web-backend/components/.gitkeep
 
 # worker-backend
-/websoft/worker-backend/platform/**
-!/websoft/worker-backend/platform/.gitkeep
-/websoft/worker-backend/components/**
-!/websoft/worker-backend/components/.gitkeep
+/websoft/runtimes/worker-backend/platform/**
+!/websoft/runtimes/worker-backend/platform/.gitkeep
+/websoft/runtimes/worker-backend/components/**
+!/websoft/runtimes/worker-backend/components/.gitkeep
 
 # Логи по нодам
 /websoft/Logs/web-backend-1/**
@@ -51,5 +54,7 @@
 !/websoft/Logs/worker-backend/.gitkeep
 
 # websoft/components
-/websoft/components/**
-!/websoft/components/.gitkeep
+/websoft/components.src/**
+!/websoft/components.src/.gitkeep
+
+

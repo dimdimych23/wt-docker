@@ -165,7 +165,6 @@ services:
       - ./websoft/ft-idx:/WebsoftServer/ft-idx
       - ./websoft/wt_data:/WebsoftServer/wt_data
       - ./websoft/web/webtutor:/WebsoftServer/wt/web/webtutor
-      - ./websoft/components:/WebsoftServer/components
       - ./websoft/runtimes/web-backend/platform:/WebsoftServer/platform.runtime
       - ./websoft/runtimes/web-backend/components:/WebsoftServer/components.runtime
       # Логи 
@@ -250,7 +249,6 @@ services:
       - ./websoft/ft-idx:/WebsoftServer/ft-idx
       - ./websoft/wt_data:/WebsoftServer/wt_data
       - ./websoft/web/webtutor:/WebsoftServer/wt/web/webtutor
-      - ./websoft/components:/WebsoftServer/components
       - ./websoft/runtimes/web-backend/platform:/WebsoftServer/platform.runtime
       - ./websoft/runtimes/web-backend/components:/WebsoftServer/components.runtime
       # Логи 
@@ -335,7 +333,6 @@ services:
       - ./websoft/ft-idx:/WebsoftServer/ft-idx
       - ./websoft/wt_data:/WebsoftServer/wt_data
       - ./websoft/web/webtutor:/WebsoftServer/wt/web/webtutor
-      - ./websoft/components:/WebsoftServer/components
       - ./websoft/runtimes/worker-backend/platform:/WebsoftServer/platform.runtime
       - ./websoft/runtimes/worker-backend/components:/WebsoftServer/components.runtime
       # Логи 

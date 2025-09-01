@@ -1,8 +1,11 @@
-# Dockerfile.hcm — собственный образ WebSoft HCM с твоими компонентами
+# Dockerfile.hcm — собственный образ WebSoft HCM с компонентами
 
 # БАЗА (передаётся из .env.build → build-image.sh → --build-arg)
-ARG WT_BASE_IMAGE
+ARG WT_BASE_IMAGE=websoft/hcm:2025.2.1225
 FROM ${WT_BASE_IMAGE}
+
+# повторно объявляем, чтобы ARG был виден в LABEL
+ARG WT_BASE_IMAGE
 
 # ARG'и для метаданных (labels)
 ARG IMAGE_TITLE
@@ -13,7 +16,6 @@ ARG BASE_DIGEST=""
 ARG COMPONENTS_MANIFEST=""
 ARG LABEL_NOTES=""
 
-# Стандартные OCI-лейблы + кастомные
 LABEL org.opencontainers.image.title="${IMAGE_TITLE}" \
       org.opencontainers.image.description="${IMAGE_DESCRIPTION}" \
       org.opencontainers.image.revision="${GIT_SHA}" \
@@ -23,10 +25,8 @@ LABEL org.opencontainers.image.title="${IMAGE_TITLE}" \
       tmk.components="${COMPONENTS_MANIFEST}" \
       tmk.notes="${LABEL_NOTES}"
 
-# Где в репозитории лежат твои компоненты
 ARG COMPONENTS_SRC
 COPY ${COMPONENTS_SRC}/ /WebsoftServer/components/
 
-# >>> НОВОЕ: уложим структурный JSON-манифест внутрь образа
 ARG COMPONENTS_MANIFEST_JSON="[]"
 RUN printf '%s' "${COMPONENTS_MANIFEST_JSON}" > /WebsoftServer/components.manifest.json
