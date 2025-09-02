@@ -294,3 +294,28 @@ docker compose --profile local-postgres down -v
 ```bash
 ./websoft/configs/common/clear-logs.sh
 ```
+
+# Кастомные образы WebSoft HCM и публикация
+
+
+## Зачем
+
+Мы собираем собственный Docker-образ на базе официального websoft/hcm:* и накладываем дополнительные/обновлённые компоненты из каталога websoft/components.src/. Это даёт повторяемость и одинаковый состав на всех нодах (web1, web2, worker).
+
+
+## Где лежит логика сборки
+
+•	`Dockerfile.hcm` — рецепт образа (COPY поверх базовых компонентов + OCI-лейблы).
+•	`tools/build-image.sh` — единая команда сборки/пуша (читается .env.build).
+•	`.env.build` — все параметры сборки/публикации и описания образа (без хардкода).
+•	`websoft/components.src/` — **распакованные** папки доп. компонентов (overlay).
+
+
+## Быстрый старт (локальная сборка)
+
+
+```bash
+./tools/build-image.sh
+# итоговый образ: <IMAGE_REPO>:<IMAGE_TAG>
+# WT_IMAGE в .env можно обновить вручную при необходимости
+```
