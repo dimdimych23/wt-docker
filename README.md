@@ -307,10 +307,10 @@ docker compose --profile local-postgres down -v
 
 ## Где лежит логика сборки
 
-•	`Dockerfile.hcm` — рецепт образа (COPY поверх базовых компонентов + OCI-лейблы).
-•	`tools/build-image.sh` — единая команда сборки/пуша (читается .env.build).
-•	`.env.build` — все параметры сборки/публикации и описания образа (без хардкода).
-•	`websoft/components.src/` — **распакованные** папки доп. компонентов (overlay).
+-	`Dockerfile.hcm` — рецепт образа (COPY поверх базовых компонентов + OCI-лейблы).
+-	`tools/build-image.sh` — единая команда сборки/пуша (читается .env.build).
+-	`.env.build` — все параметры сборки/публикации и описания образа (без хардкода).
+-	`websoft/components.src/` — **распакованные** папки доп. компонентов (overlay).
 
 
 ## Быстрый старт (локальная сборка)
@@ -348,9 +348,9 @@ docker compose up -d --no-deps worker-backend
 ```
 
 **Важно**
-	•	Для Mac/ARM собираем под linux/amd64 (так настроено в .env.build: BUILD_PLATFORM=linux/amd64).
-	•	Тегируйте релизы кодом и образом синхронно (например, 2025.2.1225-company.N).
-	•	Состав оверлея компонентов фиксируется в `label` и в `/WebsoftServer/components.manifest.json` внутри образа.
+-	Для Mac/ARM собираем под linux/amd64 (так настроено в .env.build: BUILD_PLATFORM=linux/amd64).
+-	Тегируйте релизы кодом и образом синхронно (например, 2025.2.1225-company.N).
+-	Состав оверлея компонентов фиксируется в `label` и в `/WebsoftServer/components.manifest.json` внутри образа.
 
 ## Использование в docker-compose
 
