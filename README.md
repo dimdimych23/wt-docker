@@ -60,7 +60,7 @@ wt-docker/
 └─ redis/
 ```
 
-> **Внимание по `runtimes/`:** если эти папки пустые на хосте, они перекрывают содержимое образа, и платформа не найдёт стандартные модули (`wtv_view_main.xml`). Либо заполните их из образа, либо временно уберите bind-mount’ы.
+> **Внимание по `runtimes/`:** возможно потребуется монтировать на каждую ноду отдельные папки рантаймов, до конца не разобрался как они заполняются.
 
 ---
 
@@ -207,37 +207,18 @@ docker exec -it wt-docker-redis-1 redis-cli -a "$PASSWORD__REDIS" PING
 
 - FT-индексы и данные хранятся в бинд-каталогах:
   ```
-  ./websoft/wt_data  -> /WebsoftServer/wt_data
-  ./websoft/Logs/... -> /WebsoftServer/Logs
+  ./websoft/wt_data      -> /WebsoftServer/wt_data
+  ./websoft/Logs/...     -> /WebsoftServer/Logs
+  ./websoft/web/webtutor -> /WebsoftServer/wt/web/webtutor
+  ./websoft/ft-idx       -> /WebsoftServer/ft-idx
   ```
 - В SPXML `SharedFTDirectory` указывает на `/WebsoftServer/ft-idx/`.  
-  Если требуется отдельный каталог индексов, добавьте bind-mount в compose и обновите шаблон.
-
-### 5. Runtimes (platform.runtime / components.runtime)
-
-- Если хотите хранить рантаймы на хосте, предварительно заполните каталоги содержимым из образа:
-  ```sh
-  mkdir -p ./websoft/runtimes/web-backend/{platform,components}
-  CID=$(docker create websoft/hcm:2025.2.1212)
-  docker cp $CID:/WebsoftServer/platform.runtime/.   ./websoft/runtimes/web-backend/platform/
-  docker cp $CID:/WebsoftServer/components.runtime/. ./websoft/runtimes/web-backend/components/
-  docker rm $CID
-  ```
-- Иначе просто уберите соответствующие bind-mount’ы — образ содержит нужные файлы.
-
----
 
 ## Частые проблемы и решения
 
 ### 400/404 на портале сразу после запуска
 
-- Проверьте, что рантаймы не пустые (см. раздел про runtimes/).
 - Убедитесь, что `xhttp_config.json` содержит разрешённый AllowedHosts и корректный порт.
-
-### Error loading document x-local://wtv/wtv_view_main.xml
-
-- Один в один симптом пустых `platform.runtime/components.runtime`.  
-  Уберите bind-mount’ы или заполните директории.
 
 ### Поднялся Redis, но клиенты не коннектятся (NOAUTH/WRONGPASS)
 
