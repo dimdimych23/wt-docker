@@ -25,7 +25,7 @@ fi
 WT_BASE_IMAGE="${WT_BASE_IMAGE:-websoft/hcm:2025.2.1225}"
 BUILD_PLATFORM="${BUILD_PLATFORM:-linux/amd64}"
 IMAGE_REPO="${IMAGE_REPO:-hcm/platform}"
-IMAGE_TAG="${IMAGE_TAG:-2025.2.1225-tmk.1}"
+IMAGE_TAG="${IMAGE_TAG:-2025.2.1225-company.1}"
 
 IMAGE_TITLE="${IMAGE_TITLE:-WebSoft HCM (custom)}"
 IMAGE_DESCRIPTION="${IMAGE_DESCRIPTION:-HCM with curated components}"

@@ -22,8 +22,8 @@ LABEL org.opencontainers.image.title="${IMAGE_TITLE}" \
       org.opencontainers.image.created="${BUILD_DATE}" \
       org.opencontainers.image.base.name="${WT_BASE_IMAGE}" \
       org.opencontainers.image.base.digest="${BASE_DIGEST}" \
-      tmk.components="${COMPONENTS_MANIFEST}" \
-      tmk.notes="${LABEL_NOTES}"
+      company.components="${COMPONENTS_MANIFEST}" \
+      company.notes="${LABEL_NOTES}"
 
 ARG COMPONENTS_SRC
 COPY ${COMPONENTS_SRC}/ /WebsoftServer/components/

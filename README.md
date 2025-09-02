@@ -297,6 +297,8 @@ docker compose --profile local-postgres down -v
 
 # Кастомные образы WebSoft HCM и публикация
 
+У нас есть Docker-реестр: nexus.company.com:5001.
+Работаем нативно через docker login / tag / push / pull.
 
 ## Зачем
 
@@ -313,9 +315,46 @@ docker compose --profile local-postgres down -v
 
 ## Быстрый старт (локальная сборка)
 
+1) Необходимо указать переменные сборки в `.env.build` :
+```ini
+# куда пушим
+REGISTRY_HOST=nexus.company.com:5001
+REGISTRY_USER=<логин_в_Nexus>
+REGISTRY_PASS=<пароль_в_Nexus>
+PUSH=true
+
+# как называем образ (namespace/name:tag)
+IMAGE_REPO=websoft/hcm
+IMAGE_TAG=2025.2.1225-company.1
+```
+2) Запуск:
+```bash
+# 1) сборка и публикация
+./tools/build-image.sh
+
+# 2) проверка, что образ в реестре, пример:
+docker pull nexus.company.com:5001/websoft/hcm:2025.2.1225-company.1
+```
+
+Скрипт `tools/build-image.sh` прочитает `.env.build`, сделает docker login, соберёт образ и запушит его как
+`nexus.company.com:5001/${IMAGE_REPO}:${IMAGE_TAG}`.
+
+3) Можно раскатать по очереди:
 
 ```bash
-./tools/build-image.sh
-# итоговый образ: <IMAGE_REPO>:<IMAGE_TAG>
-# WT_IMAGE в .env можно обновить вручную при необходимости
+docker compose up -d --no-deps web-backend-1
+docker compose up -d --no-deps web-backend-2
+docker compose up -d --no-deps worker-backend
+```
+
+**Важно**
+	•	Для Mac/ARM собираем под linux/amd64 (так настроено в .env.build: BUILD_PLATFORM=linux/amd64).
+	•	Тегируйте релизы кодом и образом синхронно (например, 2025.2.1225-company.N).
+	•	Состав оверлея компонентов фиксируется в `label` и в `/WebsoftServer/components.manifest.json` внутри образа.
+
+## Использование в docker-compose
+
+В `.env` (проекты, стенды):
+```ini
+WT_IMAGE=nexus.company.com:5001/websoft/hcm:2025.2.1225-company.1
 ```
