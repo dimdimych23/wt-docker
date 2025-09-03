@@ -352,6 +352,10 @@ services:
       retries: ${HC_RETRIES__WORKER:-12}
     networks: [wt-net]
 
+  # ====================================================
+  #  MONITORING
+  # ====================================================
+  # --- сервис может читать из S3 и шлёт в Loki ---
 
   loki:
     image: ${IMAGE_LOKI}
@@ -408,10 +412,6 @@ services:
         condition: service_healthy
     networks: [wt-net]
   
-  # ====================================================
-  #  MONITORING
-  # ====================================================
-  # --- сервис может читать из S3 и шлёт в Loki ---
   grafana:
     profiles: ["local-grafana"]
     image: ${IMAGE_GRAFANA}
@@ -440,6 +440,9 @@ services:
         condition: service_started
     networks: [wt-net]
   
+  # ====================================================
+  #  Опциональная Postgres (локальная)
+  # ====================================================
   postgres:
     profiles: ["local-postgres"]
     image: ${IMAGE_POSTGRES}
