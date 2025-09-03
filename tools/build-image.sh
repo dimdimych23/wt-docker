@@ -142,15 +142,15 @@ else
   echo "[push] skip (PUSH=$PUSH, REGISTRY_HOST=$REGISTRY_HOST)"
 fi
 
-# 6) Обновим WT_IMAGE в .env
+# 6) Обновим IMAGE_WT в .env
 # PLATFORM_ENV="${ROOT}/.env"
 # if [ -f "$PLATFORM_ENV" ]; then
-#   if grep -q '^WT_IMAGE=' "$PLATFORM_ENV"; then
-#     sed -i.bak "s#^WT_IMAGE=.*#WT_IMAGE=${FULL_IMAGE}#g" "$PLATFORM_ENV"
+#   if grep -q '^IMAGE_WT=' "$PLATFORM_ENV"; then
+#     sed -i.bak "s#^IMAGE_WT=.*#IMAGE_WT=${FULL_IMAGE}#g" "$PLATFORM_ENV"
 #   else
-#     echo "WT_IMAGE=${FULL_IMAGE}" >> "$PLATFORM_ENV"
+#     echo "IMAGE_WT=${FULL_IMAGE}" >> "$PLATFORM_ENV"
 #   fi
-#   echo "[env] WT_IMAGE set to ${FULL_IMAGE} in .env"
+#   echo "[env] IMAGE_WT set to ${FULL_IMAGE} in .env"
 # else
 #   echo "[env] WARNING: .env не найден — пропустил обновление"
 # fi

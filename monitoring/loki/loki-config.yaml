@@ -1,0 +1,97 @@
+# Loki single-process (2.9.x), filesystem storage, retention via compactor
+auth_enabled: false
+
+server:
+  http_listen_port: ${HOST_PORT__LOKI:-3100}
+  grpc_listen_port: 9096
+  log_level: info
+
+common:
+  instance_addr: 127.0.0.1
+  path_prefix: /loki
+  ring:
+    kvstore:
+      store: memberlist
+  replication_factor: 1
+
+memberlist:
+  join_members:
+    - 127.0.0.1
+
+ingester:
+  # chunk timing – вынесли в .env
+  chunk_idle_period: ${LOKI_CHUNK_IDLE_PERIOD}
+  max_chunk_age: ${LOKI_MAX_CHUNK_AGE}
+  chunk_retain_period: ${LOKI_CHUNK_RETAIN_PERIOD}
+  lifecycler:
+    address: 127.0.0.1
+    ring:
+      kvstore:
+        store: memberlist
+      replication_factor: 1
+
+limits_config:
+  ingestion_rate_mb: 16
+  ingestion_burst_size_mb: 32
+  reject_old_samples: true
+  reject_old_samples_max_age: ${LOKI_REJECT_OLD_SAMPLES_MAX_AGE}
+  max_entries_limit_per_query: 100000
+  max_streams_per_user: 0
+  retention_period: ${LOKI_RETENTION_PERIOD}
+  max_query_length: ${LOKI_MAX_LOOK_BACK_PERIOD}
+  max_query_lookback: ${LOKI_MAX_LOOK_BACK_PERIOD}
+
+chunk_store_config:
+  max_look_back_period: ${LOKI_MAX_LOOK_BACK_PERIOD}
+
+table_manager:
+  retention_deletes_enabled: false
+  retention_period: 0s
+
+schema_config:
+  configs:
+    - from: 2023-01-01
+      store: boltdb-shipper
+      object_store: filesystem
+      schema: v13
+      index:
+        prefix: index_
+        period: 24h
+
+storage_config:
+  boltdb_shipper:
+    active_index_directory: /loki/index
+    cache_location: /loki/boltdb-cache
+    shared_store: filesystem
+  filesystem:
+    directory: /loki/chunks
+
+compactor:
+  working_directory: /loki/compactor
+  compactor_ring:
+    kvstore:
+      store: memberlist
+  retention_enabled: true
+
+ruler:
+  storage:
+    type: local
+    local:
+      directory: /loki/rules
+  rule_path: /loki/rules-temp
+  ring:
+    kvstore:
+      store: memberlist
+  enable_api: true
+
+querier:
+  max_concurrent: 8
+
+query_range:
+  parallelise_shardable_queries: true
+
+query_scheduler:
+  max_outstanding_requests_per_tenant: 1024
+
+frontend:
+  max_outstanding_per_tenant: 1024

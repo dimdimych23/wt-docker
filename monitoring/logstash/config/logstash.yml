@@ -1,0 +1,9 @@
+pipeline.workers: 1
+pipeline.ordered: auto
+
+# Важно: отключаем отправку метрик в Elasticsearch
+xpack.monitoring.enabled: false
+
+# стандартные пути
+path.config: /usr/share/logstash/pipeline
+http.host: "0.0.0.0"

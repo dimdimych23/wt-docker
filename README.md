@@ -337,5 +337,121 @@ docker compose up -d --no-deps worker-backend
 
 В `.env` (проекты, стенды):
 ```ini
-WT_IMAGE=nexus.company.com:5001/websoft/hcm:2025.2.1225-company.1
+IMAGE_WT=nexus.company.com:5001/websoft/hcm:2025.2.1225-company.1
 ```
+# 
+---
+
+## Мониторинг: Logstash → Loki → Grafana
+
+Эта сборка позволяет читать логи WebSoft HCM из **примонтированных каталогов/файловых шар** (и опционально из **S3/MinIO**), нормализовать их в **Logstash** и отправлять в **Loki**. Grafana (локально — для отладки; в ТМК — корпоративная) используется только как UI к Loki.
+
+### Как включить локально
+
+```bash
+# 1) проверь переменные в секции "MONITORING / loki" в .env (см. ниже)
+# 2) подними Loki, Logstash и локальную Grafana одним профилем:
+docker compose --profile monitoring up -d loki logstash grafana
+# 3) Зайди в Grafana: http://localhost:3000 (admin / change_me)
+#   datasource "Loki (Local)" уже будет доступен (см. monitoring/grafana/provisioning)
+```
+
+### Переменные окружения (секции `.env`)
+
+#### MONITORING / logstash → loki
+
+- `LOKI_JOB_LABEL` — имя лейбла *job* в Loki (удобный ключ для запросов/панелей).
+  Пример запроса в Grafana (LogQL):
+  ```
+  {job="${LOKI_JOB_LABEL}", service="web1"} |= "Error"
+  ```
+- `ROLE_FALLBACK`, `ENV_FALLBACK`, `LOG_TYPE_FALLBACK` — значения по умолчанию, если лог не удаётся отнести к роли/окружению/типу по имени файла.
+
+#### MONITORING / loki
+
+- `IMAGE_LOKI` — образ Loki (по умолчанию `grafana/loki:2.9.3`).
+- `HOST_NAME__LOKI` — имя сервиса Loki в docker-сети (обычно `loki`).
+- `HOST_PORT__LOKI` — порт HTTP API Loki (по умолчанию `3100`).
+- `LOKI_RETENTION_PERIOD` — срок хранения данных в Loki (буфер для поиска). **Истина — в файлах/шаре/S3**, поэтому здесь обычно 48–168 часов.
+- `LOKI_REJECT_OLD_SAMPLES_MAX_AGE` — максимальная давность записей, которые Loki примет. Держите ≥ `LOKI_RETENTION_PERIOD`.
+- `LOKI_MAX_LOOK_BACK_PERIOD` — максимальная глубина поиска в запросах Grafana (обычно равно или больше retention).
+- `LOKI_CHUNK_IDLE_PERIOD` — сколько ждать тишины по стриму до закрытия чанка. Меньше — быстрее индексируется, но больше мелких чанков.
+- `LOKI_MAX_CHUNK_AGE` — принудительное закрытие чанка при непрерывном потоке (балансирует размер/задержку).
+- `LOKI_CHUNK_RETAIN_PERIOD` — сколько держать закрытый чанк в памяти для «поздних» строк.
+
+### Когда и что крутить (симптом → параметр)
+
+| Симптом | Что изменить | Рекомендация |
+|---|---|---|
+| Логи долго появляются в поиске | `LOKI_CHUNK_IDLE_PERIOD` ↓, `LOKI_MAX_CHUNK_AGE` ↓ | Dev: 2–5m / 30–60m; Prod: 5–10m / 60–120m |
+| Слишком много маленьких чанков | `LOKI_CHUNK_IDLE_PERIOD` ↑, `LOKI_MAX_CHUNK_AGE` ↑ | Умеренно повышать, следить за диском |
+| Не удаётся искать глубже по времени | `LOKI_MAX_LOOK_BACK_PERIOD` ↑ | Держите ≥ `LOKI_RETENTION_PERIOD` |
+| Диск Loki разрастается | `LOKI_RETENTION_PERIOD` ↓ | Помните: первичное хранилище — файлы/шара/S3 |
+| Падает при приёме старых логов | `LOKI_REJECT_OLD_SAMPLES_MAX_AGE` ↑ | Держите ≥ retention |
+
+### Конфиг Loki (используется env)
+
+См. `monitoring/loki/loki-config.yaml` — весь retention/лимиты/тайминги берутся из `.env`.
+
+### Пример запросов в Grafana (LogQL)
+```logql
+{job="websoft-hcm"}
+{job="websoft-hcm", service="web1"} |= "Error"
+{job="websoft-hcm", level="Error"}
+```
+
+### Нота о хранении
+
+Loki — это **временный буфер для поиска и панелей**. Источником истины являются **логи WebSoft** в примонтированном каталоге/на файловой шаре или в S3/MinIO. При сбоях Loki/Logstash данные не теряются — можно дочитать из первичного источника.
+
+### Logstash → Loki: как включить и что за что отвечает
+
+#### 0) Идея
+- Источник истины — файлы логов WebSoft (локально / файловая шара / S3).
+- Logstash читает источники, нормализует сообщения и пушит в Loki.
+- Loki используется как «буфер для поиска и панелей» (Grafana).
+
+#### 1) Настрой `.env` (секция “MONITORING / logstash → loki”)
+- `LOGSTASH_INPUT_FILES_ENABLED` — включить чтение из **файлов/шар**.
+- `LOGSTASH_INPUT_S3_ENABLED` — включить чтение из **S3/MinIO**.
+- `LOGSTASH_FILES_GLOB_*` — где лежат логи **внутри контейнера logstash** (мы пробрасываем их через volumes).
+- `LOGSTASH_ML_*` — мультилайн (для xhttp строк вида `HH:MM:SS [dddd]`).
+- `LOKI_JOB_LABEL` и `*_FALLBACK` — метки, попадающие в Loki.
+- `S3_*` — параметры доступа к MinIO/S3 (если включаешь S3).
+- `HOST_NAME__LOKI`/`HOST_PORT__LOKI` — адрес Loki в docker-сети.
+
+#### 2) Подключи каталоги логов к контейнеру logstash
+В `docker-compose.yml` у `logstash` добавь volumes:
+```yaml
+- ./websoft/Logs/web-backend-1:/var/log/wt/web1:ro
+- ./websoft/Logs/web-backend-2:/var/log/wt/web2:ro
+- ./websoft/Logs/worker-backend:/var/log/wt/worker:ro
+```
+Для файловой шары: смонтируй её на хост (например, /mnt/wt-logs/...) и пробрось те же пути вместо ./websoft/Logs/....
+
+3) Включи нужные input’ы
+  - Только файлы/шары: `LOGSTASH_INPUT_FILES_ENABLED=true`, `LOGSTASH_INPUT_S3_ENABLED=false`.
+	-	Только S3: `LOGSTASH_INPUT_FILES_ENABLED=false`, `LOGSTASH_INPUT_S3_ENABLED=true`.
+	-	Оба: обе переменные true (для миграций).
+
+4) Конфиги pipeline (что за что отвечает)
+	-	`00-input-files.conf` — file input (читает GLOB-паттерны; мультилайн; проставляет метку роли).
+	-	`01-input-s3.conf` — s3 input (опрашивает бакет; кладёт ключ объекта в метаданные).
+	-	`10-filter-common.conf` — нормализация:
+	-	вычисляет role (web1/web2/worker) по пути/ключу,
+	-	извлекает env и log_type из имени файла,
+	-	собирает JSON для Loki (streams/labels/values).
+	-	`90-output-loki.conf` — HTTP push в Loki (/loki/api/v1/push).
+
+5) Запуск и тест
+```bash
+docker compose --profile monitoring up -d loki logstash grafana
+docker logs -f wt-docker-logstash-1
+# в Grafana: {job="websoft-hcm"} или {job="websoft-hcm", role="web1"} |= "Error"
+```
+
+6) Типовые проблемы
+	-	«Логи не собираются из файлов» — проверь volumes у logstash и что `LOGSTASH_INPUT_FILES_ENABLED=true`.
+	-	«Мультилайн не работает» — удостоверься, что `LOGSTASH_ML_PATTERN` ровно `^\\d{2}:\\d{2}:\\d{2}\\s\\\\\d{4}\\\\s+`.
+	-	«S3 не читается» — включи `LOGSTASH_INPUT_S3_ENABLED=true`, проверь S3_*, доверенные сертификаты (Dockerfile уже импортирует CA MinIO).
+	-	«Grafana не видит логи» — проверь, что Loki поднят, и что `HOST_PORT__LOKI` проброшен (`3100:3100`).
