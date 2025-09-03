@@ -1,0 +1,55 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /positions/positions.yaml
+
+clients:
+  - url: http://${LOKI_HOST}:${LOKI_PORT}/loki/api/v1/push
+
+target_config:
+  sync_period: 10s
+
+scrape_configs:
+  - job_name: ${LOKI_JOB_LABEL}
+    static_configs:
+      - targets: [localhost]
+        labels:
+          job: ${LOKI_JOB_LABEL}
+          env: ${ENV_FALLBACK}
+          __path__: /var/log/wt/*/*.log
+    pipeline_stages:
+      # Склейка мультистрочных сообщений: любая строка, начинающаяся с HH:MM:SS
+      - multiline:
+          firstline: ${PROMTAIL_MULTILINE_FIRSTLINE:^\d{2}:\d{2}:\d{2}}
+          max_wait_time: ${PROMTAIL_MULTILINE_MAX_WAIT_TIME:3s}
+
+      # 1) Достаём role (имя каталога), log_type и дату из полного пути файла
+      #    Примеры:
+      #      /var/log/wt/web-backend-1/xhttp_2025-09-03.log
+      #      /var/log/wt/worker-backend/spxml_unibridge_2025-09-02.log
+      #      /var/log/wt/web-backend-2/microsoft.aspnetcore.dataprotection.keymanagement.xmlkeymanager_2025-09-02.log
+      - regex:
+          source: filename
+          expression: '.*/(?P<role>[^/]+)/(?P<log_type>[^/_][^_]*)_(?P<file_date>\d{4}-\d{2}-\d{2})(?:\.\d+)?(?:\.log)?$'
+      - labels:
+          role: role
+          log_type: log_type
+          file_date: file_date
+
+      # 2) Достаём время из начала строки сообщения
+      - regex:
+          source: message
+          expression: '^(?P<hms>\d{2}:\d{2}:\d{2})'
+
+      # 3) Склеиваем дату из имени файла + время из строки => итоговый timestamp
+      - template:
+          source: ts
+          template: '{{ .file_date }} {{ .hms }}'
+
+      # 4) Проставляем итоговый timestamp для записи
+      - timestamp:
+          source: ts
+          format: '2006-01-02 15:04:05'
+          location: ${PROMTAIL_TIMEZONE:Local}

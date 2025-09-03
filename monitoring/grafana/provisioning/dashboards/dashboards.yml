@@ -1,8 +1,13 @@
 apiVersion: 1
+
 providers:
-  - name: default
+  - name: 'Local JSON'
+    orgId: 1
+    folder: 'WebSoft HCM'          # папка в Grafana UI
     type: file
-    disableDeletion: true
-    updateIntervalSeconds: 10
+    disableDeletion: false
+    allowUiUpdates: true            # править в UI можно (сохраняется в БД)
+    updateIntervalSeconds: 10       # периодический рескан JSON на диске
     options:
       path: /var/lib/grafana/dashboards
+      foldersFromFilesStructure: true

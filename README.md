@@ -2,7 +2,7 @@
 
 Минимальная сборка WebSoft HCM (WebTutor) для локальной разработки:  
 **Nginx → WebRole(2) → WorkerRole(1) + Redis** и опционально **Postgres** (включается профилем).  
-Без MinIO/бакетов, без мониторинга — только то, что нужно, чтобы система поднялась и работала.
+Мониторинг (по желанию): **Promtail → Loki → Grafana**. Без MinIO/бакетов.
 
 ---
 
@@ -267,7 +267,7 @@ docker compose --profile local-postgres down -v
 
 - Вопросы по конфигурации SPXML/xHttp — в каталоге `websoft/configs/*`.
 - Логи: `./websoft/Logs/<service>` и `docker logs <container>`.
-- Если понадобятся MinIO/мониторинг — используйте другой compose-
+Если понадобятся бакеты S3/MinIO — это отдельная сборка; в текущей используются mounts/шары и Promtail.
 
 ### clear-logs.sh
 Скрипт для очистки примонтированных логов (web-backend-1, web-backend-2, worker-backend).  
@@ -342,116 +342,97 @@ IMAGE_WT=nexus.company.com:5001/websoft/hcm:2025.2.1225-company.1
 # 
 ---
 
-## Мониторинг: Logstash → Loki → Grafana
 
-Эта сборка позволяет читать логи WebSoft HCM из **примонтированных каталогов/файловых шар** (и опционально из **S3/MinIO**), нормализовать их в **Logstash** и отправлять в **Loki**. Grafana (локально — для отладки; в ТМК — корпоративная) используется только как UI к Loki.
+## Мониторинг: Promtail → Loki → Grafana
 
-### Как включить локально
+Эта сборка читает логи WebSoft HCM из **примонтированных каталогов/файловых шар** на хосте с помощью **Promtail**, отправляет их в **Loki**, а **Grafana** используется как UI для поиска и дашбордов. Никакого Logstash и S3/MinIO в этом варианте не требуется.
 
+### Что уже сделано в compose
+- Сервисы: `loki`, `promtail`, `grafana` (Grafana включается профилем `local-grafana`).
+- Логи WebSoft примонтированы read-only в Promtail:
+  - `./websoft/Logs/web-backend-1` → `/var/log/wt/web-backend-1`
+  - `./websoft/Logs/web-backend-2` → `/var/log/wt/web-backend-2`
+  - `./websoft/Logs/worker-backend` → `/var/log/wt/worker-backend`
+- Автопровиженинг Grafana для источников/дашбордов подключён через каталоги:
+  - `monitoring/grafana/provisioning/{datasources,dashboards}`
+  - `monitoring/grafana/dashboards` (куда кладём JSON/NDJSON с дашбордами)
+
+### Переменные окружения (из `.env`)
+**MONITORING / promtail**
+- `IMAGE_PROMTAIL` — образ Promtail.
+- `LOKI_JOB_LABEL` — значение лейбла `job` для всех потоков (по умолчанию `websoft-hcm`).
+- `PROMTAIL_MULTILINE_FIRSTLINE` — regex начала новой записи (по умолчанию `^\d{2}:\d{2}:\d{2}`).
+- `PROMTAIL_MULTILINE_MAX_WAIT_TIME` — максимальная задержка ожидания следующей строки мультилайна (например, `3s`).
+- `ENV_FALLBACK` — дефолтное окружение (например, `dev`). Используется, если его нельзя вывести из имени файла.
+
+**MONITORING / loki**
+- `IMAGE_LOKI`, `HOST_NAME__LOKI`, `HOST_PORT__LOKI` — образ и адрес Loki.
+- Retention/тайминги:
+  - `LOKI_RETENTION_PERIOD` — срок хранения данных в Loki (буфер поиска).
+  - `LOKI_REJECT_OLD_SAMPLES_MAX_AGE` — максимальная давность принимаемых сообщений.
+  - `LOKI_MAX_LOOK_BACK_PERIOD` — максимальная глубина поиска.
+  - `LOKI_CHUNK_IDLE_PERIOD`, `LOKI_MAX_CHUNK_AGE`, `LOKI_CHUNK_RETAIN_PERIOD` — размер чанков vs задержка индексации.
+
+**MONITORING / grafana**
+- `IMAGE_GRAFANA`, `HOST_PORT__GRAFANA`, `GF_SECURITY_*`, `GF_USERS_ALLOW_SIGN_UP` — базовые настройки и доступ.
+
+### Как запустить локально
 ```bash
-# 1) проверь переменные в секции "MONITORING / loki" в .env (см. ниже)
-# 2) подними Loki, Logstash и локальную Grafana одним профилем:
-docker compose --profile monitoring up -d loki logstash grafana
-# 3) Зайди в Grafana: http://localhost:3000 (admin / change_me)
-#   datasource "Loki (Local)" уже будет доступен (см. monitoring/grafana/provisioning)
+# Loki + Promtail (обязательно) и локальная Grafana (по профилю)
+docker compose --profile local-grafana up -d loki promtail grafana
 ```
 
-### Переменные окружения (секции `.env`)
+Зайди в Grafana: **http://localhost:${HOST_PORT__GRAFANA}** (логин/пароль из `.env`).  
+Datasource Loki создаётся через провижининг. Если менял провижининг — перезапусти Grafana:
+```bash
+docker compose restart grafana
+```
 
-#### MONITORING / logstash → loki
-
-- `LOKI_JOB_LABEL` — имя лейбла *job* в Loki (удобный ключ для запросов/панелей).
-  Пример запроса в Grafana (LogQL):
+### Как Promtail размечает логи
+- **role** — имя верхнего каталога: `web-backend-1`, `web-backend-2`, `worker-backend`.
+- **log_type** — из имени файла до суффикса даты:  
+  `microsoft.aspnetcore.dataprotection.keymanagement.xmlkeymanager_2025-09-02.log` →  
+  `log_type="microsoft.aspnetcore.dataprotection.keymanagement.xmlkeymanager"`
   ```
-  {job="${LOKI_JOB_LABEL}", service="web1"} |= "Error"
+  auth-events_2025-09-02.log         -> log_type="auth-events"
+  spxml_unibridge_2025-09-02.log     -> log_type="spxml_unibridge"
+  xhttp_2025-09-02.log               -> log_type="xhttp"
+  components_2025-09-03.log          -> log_type="components"
   ```
-- `ROLE_FALLBACK`, `ENV_FALLBACK`, `LOG_TYPE_FALLBACK` — значения по умолчанию, если лог не удаётся отнести к роли/окружению/типу по имени файла.
+- **env** — берётся из `ENV_FALLBACK` (если захочешь — можно расширить извлечение из имени файла `wt_dev.*`, но сейчас это не требуется).
+- **job** — равно `LOKI_JOB_LABEL` (например, `websoft-hcm`).
+- **timestamp** — из времени в начале строки (мультилайн-регекс) + текущая дата файла, или задаётся самим Loki по времени приёма, если формат строки иной.
 
-#### MONITORING / loki
-
-- `IMAGE_LOKI` — образ Loki (по умолчанию `grafana/loki:2.9.3`).
-- `HOST_NAME__LOKI` — имя сервиса Loki в docker-сети (обычно `loki`).
-- `HOST_PORT__LOKI` — порт HTTP API Loki (по умолчанию `3100`).
-- `LOKI_RETENTION_PERIOD` — срок хранения данных в Loki (буфер для поиска). **Истина — в файлах/шаре/S3**, поэтому здесь обычно 48–168 часов.
-- `LOKI_REJECT_OLD_SAMPLES_MAX_AGE` — максимальная давность записей, которые Loki примет. Держите ≥ `LOKI_RETENTION_PERIOD`.
-- `LOKI_MAX_LOOK_BACK_PERIOD` — максимальная глубина поиска в запросах Grafana (обычно равно или больше retention).
-- `LOKI_CHUNK_IDLE_PERIOD` — сколько ждать тишины по стриму до закрытия чанка. Меньше — быстрее индексируется, но больше мелких чанков.
-- `LOKI_MAX_CHUNK_AGE` — принудительное закрытие чанка при непрерывном потоке (балансирует размер/задержку).
-- `LOKI_CHUNK_RETAIN_PERIOD` — сколько держать закрытый чанк в памяти для «поздних» строк.
-
-### Когда и что крутить (симптом → параметр)
-
-| Симптом | Что изменить | Рекомендация |
-|---|---|---|
-| Логи долго появляются в поиске | `LOKI_CHUNK_IDLE_PERIOD` ↓, `LOKI_MAX_CHUNK_AGE` ↓ | Dev: 2–5m / 30–60m; Prod: 5–10m / 60–120m |
-| Слишком много маленьких чанков | `LOKI_CHUNK_IDLE_PERIOD` ↑, `LOKI_MAX_CHUNK_AGE` ↑ | Умеренно повышать, следить за диском |
-| Не удаётся искать глубже по времени | `LOKI_MAX_LOOK_BACK_PERIOD` ↑ | Держите ≥ `LOKI_RETENTION_PERIOD` |
-| Диск Loki разрастается | `LOKI_RETENTION_PERIOD` ↓ | Помните: первичное хранилище — файлы/шара/S3 |
-| Падает при приёме старых логов | `LOKI_REJECT_OLD_SAMPLES_MAX_AGE` ↑ | Держите ≥ retention |
-
-### Конфиг Loki (используется env)
-
-См. `monitoring/loki/loki-config.yaml` — весь retention/лимиты/тайминги берутся из `.env`.
-
-### Пример запросов в Grafana (LogQL)
+### Примеры запросов в Grafana (LogQL)
 ```logql
-{job="websoft-hcm"}
-{job="websoft-hcm", service="web1"} |= "Error"
-{job="websoft-hcm", level="Error"}
+{job="${LOKI_JOB_LABEL}"}
+{job="${LOKI_JOB_LABEL}", role="web-backend-1"} |= "Error"
+{job="${LOKI_JOB_LABEL}", log_type="xhttp"}
+{job="${LOKI_JOB_LABEL}"} |~ "^\d{2}:\d{2}:\d{2}\s+\[\d+\]"
 ```
 
-### Нота о хранении
+### Типовая отладка
+- Проверить готовность Loki:
+  ```bash
+  docker run --rm --network wt-net curlimages/curl:8.8.0 -sS http://loki:3100/ready
+  # -> ready
+  ```
+- Посмотреть позиции чтения Promtail:
+  ```
+  docker exec -it wt-docker-promtail-1 cat /positions/positions.yaml
+  ```
+- Убедиться, что файлы видны внутри Promtail:
+  ```
+  docker exec -it wt-docker-promtail-1 ls -la /var/log/wt/web-backend-1
+  ```
 
-Loki — это **временный буфер для поиска и панелей**. Источником истины являются **логи WebSoft** в примонтированном каталоге/на файловой шаре или в S3/MinIO. При сбоях Loki/Logstash данные не теряются — можно дочитать из первичного источника.
-
-### Logstash → Loki: как включить и что за что отвечает
-
-#### 0) Идея
-- Источник истины — файлы логов WebSoft (локально / файловая шара / S3).
-- Logstash читает источники, нормализует сообщения и пушит в Loki.
-- Loki используется как «буфер для поиска и панелей» (Grafana).
-
-#### 1) Настрой `.env` (секция “MONITORING / logstash → loki”)
-- `LOGSTASH_INPUT_FILES_ENABLED` — включить чтение из **файлов/шар**.
-- `LOGSTASH_INPUT_S3_ENABLED` — включить чтение из **S3/MinIO**.
-- `LOGSTASH_FILES_GLOB_*` — где лежат логи **внутри контейнера logstash** (мы пробрасываем их через volumes).
-- `LOGSTASH_ML_*` — мультилайн (для xhttp строк вида `HH:MM:SS [dddd]`).
-- `LOKI_JOB_LABEL` и `*_FALLBACK` — метки, попадающие в Loki.
-- `S3_*` — параметры доступа к MinIO/S3 (если включаешь S3).
-- `HOST_NAME__LOKI`/`HOST_PORT__LOKI` — адрес Loki в docker-сети.
-
-#### 2) Подключи каталоги логов к контейнеру logstash
-В `docker-compose.yml` у `logstash` добавь volumes:
-```yaml
-- ./websoft/Logs/web-backend-1:/var/log/wt/web1:ro
-- ./websoft/Logs/web-backend-2:/var/log/wt/web2:ro
-- ./websoft/Logs/worker-backend:/var/log/wt/worker:ro
-```
-Для файловой шары: смонтируй её на хост (например, /mnt/wt-logs/...) и пробрось те же пути вместо ./websoft/Logs/....
-
-3) Включи нужные input’ы
-  - Только файлы/шары: `LOGSTASH_INPUT_FILES_ENABLED=true`, `LOGSTASH_INPUT_S3_ENABLED=false`.
-	-	Только S3: `LOGSTASH_INPUT_FILES_ENABLED=false`, `LOGSTASH_INPUT_S3_ENABLED=true`.
-	-	Оба: обе переменные true (для миграций).
-
-4) Конфиги pipeline (что за что отвечает)
-	-	`00-input-files.conf` — file input (читает GLOB-паттерны; мультилайн; проставляет метку роли).
-	-	`01-input-s3.conf` — s3 input (опрашивает бакет; кладёт ключ объекта в метаданные).
-	-	`10-filter-common.conf` — нормализация:
-	-	вычисляет role (web1/web2/worker) по пути/ключу,
-	-	извлекает env и log_type из имени файла,
-	-	собирает JSON для Loki (streams/labels/values).
-	-	`90-output-loki.conf` — HTTP push в Loki (/loki/api/v1/push).
-
-5) Запуск и тест
-```bash
-docker compose --profile monitoring up -d loki logstash grafana
-docker logs -f wt-docker-logstash-1
-# в Grafana: {job="websoft-hcm"} или {job="websoft-hcm", role="web1"} |= "Error"
-```
-
-6) Типовые проблемы
-	-	«Логи не собираются из файлов» — проверь volumes у logstash и что `LOGSTASH_INPUT_FILES_ENABLED=true`.
-	-	«Мультилайн не работает» — удостоверься, что `LOGSTASH_ML_PATTERN` ровно `^\\d{2}:\\d{2}:\\d{2}\\s\\\\\d{4}\\\\s+`.
-	-	«S3 не читается» — включи `LOGSTASH_INPUT_S3_ENABLED=true`, проверь S3_*, доверенные сертификаты (Dockerfile уже импортирует CA MinIO).
-	-	«Grafana не видит логи» — проверь, что Loki поднят, и что `HOST_PORT__LOKI` проброшен (`3100:3100`).
+### Дашборды Grafana
+- Клади JSON-дашборды в `monitoring/grafana/dashboards/`.
+- Провижининг дашбордов/датасорсов — в `monitoring/grafana/provisioning/{dashboards,datasources}`.
+- Перечитать провижининг без рестарта:
+  ```bash
+  curl -u "${GF_SECURITY_ADMIN_USER}:${GF_SECURITY_ADMIN_PASSWORD}" \
+    -X POST http://localhost:${HOST_PORT__GRAFANA}/api/admin/provisioning/dashboards/reload
+  curl -u "${GF_SECURITY_ADMIN_USER}:${GF_SECURITY_ADMIN_PASSWORD}" \
+    -X POST http://localhost:${HOST_PORT__GRAFANA}/api/admin/provisioning/datasources/reload
+  ```

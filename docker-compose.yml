@@ -8,10 +8,11 @@ networks:
 
 volumes:
   redis-data:
-  # локальная инфраструктура (поднимается только при включённом profile)
-  postgres-data:  
   loki-data:
   logstash-data:
+  promtail-positions:
+  # для Postgres и Grafana монтируются по профилям
+  postgres-data:
   grafana-data:
 
 # -----------------------------
@@ -377,47 +378,31 @@ services:
     networks:
       - wt-net
 
-  logstash:
-    image: ${IMAGE_LOGSTASH}
+  promtail:
+    image: ${IMAGE_PROMTAIL}
     restart: always
-    entrypoint: ["/usr/local/bin/init-logstash.sh"]
+    user: "0"                           # чтобы мог читать маунты (RO)
+    command: -config.file=/etc/promtail/promtail.yml -config.expand-env=true
     environment:
-      LS_JAVA_OPTS: "-Xms256m -Xmx512m"
-      # включатели/лейблы — как было
-      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID}
-      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY}
-      BUCKET_LOGS: ${BUCKET_LOGS}
+      # Лейблы/переменные
       LOKI_JOB_LABEL: ${LOKI_JOB_LABEL}
-      ROLE_FALLBACK: ${ROLE_FALLBACK}
       ENV_FALLBACK: ${ENV_FALLBACK}
-      LOG_TYPE_FALLBACK: ${LOG_TYPE_FALLBACK}
-      HOST_NAME__LOKI: ${HOST_NAME__LOKI}
-      HOST_PORT__LOKI: ${HOST_PORT__LOKI}
-      # новые
-      LOGSTASH_PLUGINS: ${LOGSTASH_PLUGINS}
-      TRUST_MINIO_CA: ${TRUST_MINIO_CA}
-      MINIO_CA_PATH: ${MINIO_CA_PATH}
-      # переклюатели источников (если ещё не прокинуты)
-      LOGSTASH_INPUT_FILES_ENABLED: ${LOGSTASH_INPUT_FILES_ENABLED}
-      LOGSTASH_INPUT_S3_ENABLED: ${LOGSTASH_INPUT_S3_ENABLED}
-      LOGSTASH_FILES_GLOB_WEB1: ${LOGSTASH_FILES_GLOB_WEB1}
-      LOGSTASH_FILES_GLOB_WEB2: ${LOGSTASH_FILES_GLOB_WEB2}
-      LOGSTASH_FILES_GLOB_WORKER: ${LOGSTASH_FILES_GLOB_WORKER}
-      LOGSTASH_ML_PATTERN: ${LOGSTASH_ML_PATTERN}
-      LOGSTASH_ML_NEGATE: ${LOGSTASH_ML_NEGATE}
-      LOGSTASH_ML_WHAT: ${LOGSTASH_ML_WHAT}
-      LOGSTASH_ML_AUTO_FLUSH: ${LOGSTASH_ML_AUTO_FLUSH}
+      LOKI_HOST: ${HOST_NAME__LOKI}
+      LOKI_PORT: ${HOST_PORT__LOKI}
+      PROMTAIL_TIMEZONE: ${TZ}
+      PROMTAIL_MULTILINE_FIRSTLINE: ${PROMTAIL_MULTILINE_FIRSTLINE}
+      PROMTAIL_MULTILINE_MAX_WAIT_TIME: ${PROMTAIL_MULTILINE_MAX_WAIT_TIME}
     volumes:
-      - ./monitoring/logstash/config/logstash.yml:/usr/share/logstash/config/logstash.yml:ro
-      - ./monitoring/logstash/pipeline/logstash.conf:/usr/share/logstash/pipeline/logstash.conf:ro
-      - logstash-data:/usr/share/logstash/data
-      - ./monitoring/logstash/init-logstash.sh:/usr/local/bin/init-logstash.sh:ro
-      # каталоги логов (локальные/шары, как у тебя уже настроено)
-      - ./websoft/Logs/web-backend-1:/var/log/wt/web1:ro
-      - ./websoft/Logs/web-backend-2:/var/log/wt/web2:ro
-      - ./websoft/Logs/worker-backend:/var/log/wt/worker:ro
-      # (опционально) когда появится свой CA MinIO — раскомментируй:
-      # - ./certs/minio-rootCA.pem:/secrets/minio-rootCA.crt:ro
+      # конфиг промтейла
+      - ./monitoring/promtail/promtail.yml:/etc/promtail/promtail.yml:ro
+      # состояние "прочитанных смещений"
+      - promtail-positions:/positions
+      # те же логи, что и раньше (RO)
+      - ./websoft/Logs/web-backend-1:/var/log/wt/web-backend-1:ro
+      - ./websoft/Logs/web-backend-2:/var/log/wt/web-backend-2:ro
+      - ./websoft/Logs/worker-backend:/var/log/wt/worker-backend:ro
+      # если у тебя будет сетевая шара, просто смонтируй её в ./websoft/Logs/shared и добавь ещё один маунт:
+      # - ./websoft/Logs/shared:/var/log/wt/shared:ro
     depends_on:
       loki:
         condition: service_healthy
